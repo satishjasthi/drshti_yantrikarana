@@ -9,8 +9,9 @@ Author: Satish Jasthi
 import logging
 import time
 
-import numpy as np
 import tables
+import numpy as np
+import tensorflow as tf
 from PIL import Image
 from tensorflow.python import keras
 
@@ -20,7 +21,10 @@ from drshti_yantrikarana.src.data.augmentation.saptialTrasformations import pad_
     equalize, autocontrast, color, brightness
 
 
-logging.basicConfig(level=logging.DEBUG)
+logger = tf.get_logger()
+logger.setLevel(logging.DEBUG)
+cifar_mu, cifar_sigma = np.array([0.4914, 0.4822, 0.4465]), np.array([0.2023, 0.1994, 0.2010])
+
 
 def createAugmentedData(x_train:np.array=None,
                         y_train:np.array=None)->None:
@@ -48,9 +52,15 @@ def createAugmentedData(x_train:np.array=None,
                                                  shape=[0, y_train.shape[1]])
 
 
-
+    logger.info('Creating offline data augmentations..................................................................')
+    logger.info(f'Number of original training images: {x_train.shape[0]}')
     for image, label in zip(x_train, y_train):
 
+        # normalize image
+        image = image/255
+
+        # standardize image
+        image - image - cifar_mu/ cifar_sigma
         image = Image.fromarray(image.astype('uint8'))
 
         # original
@@ -58,12 +68,11 @@ def createAugmentedData(x_train:np.array=None,
         labels_earray.append(label[None])
 
         # padding
-        images_earray.append(np.array(pad_image(image=image,
-                                 padding=[[4, 4], [4, 4], [0, 0]]))[None])
-        labels_earray.append(label[None])
+        padded_image = pad_image(image=image,
+                                 padding=[[4, 4], [4, 4], [0, 0]])
 
         # cropping
-        images_earray.append(np.array(random_crop(image=image,
+        images_earray.append(np.array(random_crop(image=padded_image,
                                  height=32,
                                  width=32,
                                  depth=3))[None])
@@ -71,25 +80,26 @@ def createAugmentedData(x_train:np.array=None,
 
         # horizontal flip
         images_earray.append(np.array(random_flip(image=image,
-                                flip_mode='h'))[0])
+                                flip_mode='h'))[None])
         labels_earray.append(label[None])
 
         # equalize
-        images_earray.append(np.array(equalize(image=image))[0])
+        images_earray.append(np.array(equalize(image=image))[None])
         labels_earray.append(label[None])
 
         # autocontrast
-        images_earray.append(np.array(autocontrast(image=image))[0])
+        images_earray.append(np.array(autocontrast(image=image))[None])
         labels_earray.append(label[None])
 
         # color
-        images_earray.append(np.array(color(image=image))[0])
+        images_earray.append(np.array(color(image=image))[None])
         labels_earray.append(label[None])
 
         # brightness
-        images_earray.append(np.array(brightness(image=image))[0])
+        images_earray.append(np.array(brightness(image=image))[None])
         labels_earray.append(label[None])
-
+    logger.info(f'Number of augmented training images: {images_earray.shape[0]}')
+    logger.info('Saving augmented data.................................................................................')
     augmetedImageData.close()
     augmetedLabelData.close()
 
