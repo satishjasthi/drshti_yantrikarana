@@ -61,7 +61,6 @@ def createAugmentedData(x_train:np.array=None,
 
         # standardize image
         image - image - cifar_mu/ cifar_sigma
-        image = Image.fromarray(image.astype('uint8'))
 
         # original
         images_earray.append(np.array(image)[None])
@@ -72,31 +71,31 @@ def createAugmentedData(x_train:np.array=None,
                                  padding=[[4, 4], [4, 4], [0, 0]])
 
         # cropping
-        images_earray.append(np.array(random_crop(image=padded_image,
+        images_earray.append(random_crop(image=padded_image,
                                  height=32,
                                  width=32,
-                                 depth=3))[None])
+                                 depth=3)[None])
         labels_earray.append(label[None])
 
         # horizontal flip
-        images_earray.append(np.array(random_flip(image=image,
-                                flip_mode='h'))[None])
+        images_earray.append(random_flip(image=image,
+                                flip_mode='h')[None])
         labels_earray.append(label[None])
 
         # equalize
-        images_earray.append(np.array(equalize(image=image))[None])
+        images_earray.append(equalize(image=image)[None])
         labels_earray.append(label[None])
 
         # autocontrast
-        images_earray.append(np.array(autocontrast(image=image))[None])
+        images_earray.append(autocontrast(image=image)[None])
         labels_earray.append(label[None])
 
         # color
-        images_earray.append(np.array(color(image=image))[None])
+        images_earray.append(color(image=image)[None])
         labels_earray.append(label[None])
 
         # brightness
-        images_earray.append(np.array(brightness(image=image))[None])
+        images_earray.append(brightness(image=image)[None])
         labels_earray.append(label[None])
     logger.info(f'Number of augmented training images: {images_earray.shape[0]}')
     logger.info('Saving augmented data.................................................................................')

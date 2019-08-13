@@ -25,25 +25,24 @@ def convertNpArray2Image(arr: np.array) -> Image:
     return Image.fromarray(arr.astype('uint8'))
 
 
-def random_flip(image: Image, flip_mode: str) -> Image:
+def random_flip(image:np.array, flip_mode: str) -> Image:
     """
     Function to randlomy flip images with probability of 0.5
     flip_mode:
         - 'h' for horizontal flip
         - 'v' for vertical flip
     """
-    image_arr = np.array(image)
 
     if flip_mode == 'h':
-        flpd_img = tf.image.random_flip_left_right(image_arr)
+        flpd_img = tf.image.random_flip_left_right(image)
     elif flip_mode == 'v':
-        flpd_img = tf.image.random_flip_up_down(image_arr)
+        flpd_img = tf.image.random_flip_up_down(image)
     else:
         raise NotImplementedError(f'current flip mode: {flip_mode} does not belongs to defined flip modes(h, w)')
-    return convertNpArray2Image(flpd_img.numpy())
+    return flpd_img.numpy()
 
 
-def pad_image(image: Image, padding: list) -> Image:
+def pad_image(image:np.array, padding: list) -> Image:
     """
     Function to pad an image
     padding: For each dimension D of input, paddings[D, 0] indicates how many values to add before the contents of
@@ -53,19 +52,19 @@ def pad_image(image: Image, padding: list) -> Image:
     image = np.array(image)
     padding = tf.constant(padding)
     padded_img = tf.pad(image, padding, mode='CONSTANT')
-    return convertNpArray2Image(padded_img.numpy())
+    return padded_img.numpy()
 
 
-def random_crop(image: Image, height: int, width: int, depth: int) -> Image:
+def random_crop(image:np.array, height: int, width: int, depth: int) -> Image:
     """
     Function to randomly crop an image to dim (height, width)
     """
     image = np.array(image)
     crp_img = tf.image.random_crop(image, size=(height, width, depth))
-    return convertNpArray2Image(crp_img.numpy())
+    return crp_img.numpy()
 
 
-def equalize(image: Image) -> Image:
+def equalize(image:np.array) -> Image:
     """Implements Equalize function from PIL using TF ops.
   to understand equalization see: https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_histograms/py_histogram_equalization/py_histogram_equalization.html
   """
@@ -107,11 +106,10 @@ def equalize(image: Image) -> Image:
     s2 = scale_channel(image, 1)
     s3 = scale_channel(image, 2)
     image = tf.stack([s1, s2, s3], 2)
-    image = Image.fromarray(image.numpy().astype('uint8'))
-    return image
+    return image.numpy()
 
 
-def autocontrast(image: Image) -> Image:
+def autocontrast(image:np.array) -> Image:
     """Implements Autocontrast function from PIL using TF ops.
   """
     image = tf.convert_to_tensor(np.array(image))
@@ -140,7 +138,7 @@ def autocontrast(image: Image) -> Image:
     s2 = scale_channel(image[:, :, 1])
     s3 = scale_channel(image[:, :, 2])
     image = tf.stack([s1, s2, s3], 2)
-    return convertNpArray2Image(image.numpy())
+    return image.numpy()
 
 
 def blend(image1: np.array, image2: np.array, factor: float = 0.5):
@@ -180,30 +178,30 @@ def blend(image1: np.array, image2: np.array, factor: float = 0.5):
     # Extrapolate:
     #
     # We need to clip and then cast.
-    return tf.cast(tf.clip_by_value(temp, 0.0, 255.0), tf.uint8)
+    return tf.cast(tf.clip_by_value(temp, 0.0, 255.0), tf.uint8).numpy()
 
 
-def color(image: Image, factor: float = 0.6) -> Image:
+def color(image:np.array, factor: float = 0.6) -> Image:
     """Equivalent of PIL Color.
     factor is 0.6 by averaging different factors used in auto augment paper
     """
     image = np.array(image)
     degenerate = tf.image.grayscale_to_rgb(tf.image.rgb_to_grayscale(image))
     img = blend(degenerate, image, factor)
-    return convertNpArray2Image(img.numpy())
+    return img.numpy()
 
 
-def brightness(image: Image, factor: float = 0.5) -> Image:
+def brightness(image:np.array, factor: float = 0.5) -> Image:
     """Equivalent of PIL Brightness.
     factor is 0.5 by averaging different factors used in auto augment paper
     """
     image = np.array(image)
     degenerate = tf.zeros_like(image)
     img = blend(degenerate, image, factor)
-    return convertNpArray2Image(img.numpy())
+    return img.numpy()
 
 
-def apply_randomRotation(image: Image) -> Image:
+def apply_randomRotation(image:np.array) -> Image:
     """
     Function to rotate image by random degree value
     """
@@ -211,7 +209,7 @@ def apply_randomRotation(image: Image) -> Image:
     image = Image.fromarray(image_arr)
     rand_angle = np.random.randint(rotation_min, rotation_max)
     image_rot = Image.Image.rotate(image, angle=rand_angle)
-    return image_rot
+    return np.array(image_rot)
 
 
 def apply_flip(image: tf.image, mode='h') -> tf.image:
@@ -222,6 +220,6 @@ def apply_flip(image: tf.image, mode='h') -> tf.image:
     :return: tf.tensor
     """
     if mode == 'v':
-        return tf.image.flip_up_down(image)
+        return tf.image.flip_up_down(image).numpy()
     elif mode == 'h':
-        return tf.image.flip_left_right(image)
+        return tf.image.flip_left_right(image).numpy()
