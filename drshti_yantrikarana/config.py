@@ -33,6 +33,7 @@ num_classes = 10
 data_mu = ''
 data_sigma = ''
 channel_depth = 3
+batch_size = 2
 
 # data augmentation#####################################################################################################
 # for random rotation
