@@ -163,13 +163,37 @@ class ConvertImages2Hdf5():
                 imgt1
     """
 
-    def __init__(self, data_dir:Path, hdf5_save_dir:Path, resizeHeight:int, resizeWidth:int):
+    def __init__(self, data_dir:Path,
+                 hdf5_save_dir:Path,
+                 resizeHeight:int,
+                 resizeWidth:int,
+                 augment_bool:bool,
+                 augmentations_list:list,
+                 save_augmentation_flag:bool,
+                 ):
         self.data_dir = data_dir
         self.train_dir = self.data_dir/'train'
         self.test_dir = self.data_dir / 'test'
         self.hdf5_save_dir = hdf5_save_dir
         self.resizeHeight = resizeHeight
         self.resizeWidth = resizeWidth
+        self.augment_bool = augment_bool
+        self.augmentations_list = augmentations_list
+        self.save_augmentation_flag = save_augmentation_flag
+        self.augmentation_func_map = {'random_rotate':random_rotate,
+                                      'horizonatal_flip': random_flip,
+                                      }
+
+    def apply_data_augmentations(self, image:np.array, label:int)->tuple:
+        """
+        Apply list of augmentations on given image
+        """
+        aug_images = list()
+        for aug in self.augmentations_list:
+            assert aug in self.augmentations_list, f'Augmention method not listed in {self.augmentation_func_map.keys()}'
+            aug_images.append(self.augmentation_func_map[aug])
+        aug_labels = [label]*len(aug_images)
+        return aug_images, aug_labels
 
 
     def createHdf5File(self, directory):
@@ -201,8 +225,20 @@ class ConvertImages2Hdf5():
         class_index_df.to_hdf(path_or_buf=hdf5_save_file.as_posix(), key='/class_index_df')
 
         for image in directory.glob('*/*'):
+            image_name = image.name
+            image_ext = image.stem
             class_name = image.parent
             class_index = class_index_df[class_index_df['class']==class_name]['label_index'].values[0]
+
+            # save augmented images locally if aug is enabled
+            if self.save_augmentation_flag:
+                directory_root = image.parent.parent.parent
+                save_aug_dir = directory_root/f'augmented_images'
+                train_aug_dir = save_aug_dir/f'train'
+                # create class wise dirs
+                for class_name in class_index_df['class']:
+                    class_dir = train_aug_dir/f'{class_name}'
+                    class_dir.mkdir(parents=True, exists_ok=True)
 
             # read image and resize it
             img = np.array(Image.open(image))
@@ -210,9 +246,27 @@ class ConvertImages2Hdf5():
                                   resize_shape=(self.resizeHeight, self.resizeWidth)
                                   ).numpy()[None]
 
-            # add image and label to hdf5 earray
-            images_earray.append(rs_img)
-            labels_erray.append(np.array(class_index).reshape(-1, 1))
+            if not self.augment_bool:
+                # add image and label to hdf5 earray
+                images_earray.append(rs_img)
+                labels_erray.append(np.array(class_index).reshape(-1, 1))
+            else:
+                aug_images, aug_labels = self.apply_data_augmentations(rs_img, class_index)
+                for image, label in zip(aug_images, aug_labels):
+                    images_earray.append(image)
+                    labels_erray.append(np.array(label).reshape(-1, 1))
+
+                    # save aug images
+                    if self.save_augmentation_flag:
+                        pil_img = Image.fromarray(image.astype('uint8'))
+                        dest = train_aug_dir/f'{class_name}/{image_name}'
+                        pil_img.save(dest.as_posix())
+
+                # add original image
+                images_earray.append(rs_img)
+                labels_erray.append(np.array(class_index).reshape(-1, 1))
+
+
         hdf5_save_file_obj.close()
 
     def createTrainTestHdf5Files(self):
