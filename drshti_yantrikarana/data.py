@@ -97,8 +97,8 @@ class TfRecords(object):
         image_gen = hdf5_data_arrays.root.images
 
         # create label index map
-        label_names = hdf5_data_arrays.root.labels[:]
-        unique_labels = set(label_names)
+        label_names = np.squeeze(hdf5_data_arrays.root.labels[:])
+        unique_labels = list(np.unique(label_names))
         label_index_map = {label: index for index, label in enumerate(unique_labels)}
 
         if self.mode == 'train':
@@ -189,7 +189,7 @@ class ConvertImages2Hdf5():
         labels_erray = hdf5_save_file_obj.create_earray(where=hdf5_save_file_obj.root,
                                                      name='labels',
                                                      atom=tables.UInt8Atom(),
-                                                     shape=[0, 1])
+                                                     shape=[0,1])
 
         classes = sorted(list(directory.glob('*')))
 
@@ -202,17 +202,17 @@ class ConvertImages2Hdf5():
 
         for image in directory.glob('*/*'):
             class_name = image.parent
-            class_index = class_index_df[class_index_df['class']==class_name]['label_index']
+            class_index = class_index_df[class_index_df['class']==class_name]['label_index'].values[0]
 
             # read image and resize it
             img = np.array(Image.open(image))
             rs_img = resize_image(img_tensor=tf.convert_to_tensor(img),
                                   resize_shape=(self.resizeHeight, self.resizeWidth)
-                                  ).numpy()
+                                  ).numpy()[None]
 
             # add image and label to hdf5 earray
             images_earray.append(rs_img)
-            labels_erray.append(class_index)
+            labels_erray.append(np.array(class_index).reshape(-1, 1))
         hdf5_save_file_obj.close()
 
     def createTrainTestHdf5Files(self):
@@ -451,10 +451,3 @@ def apply_affine_mat(x: tf.Tensor, mat: tf.Tensor, do_reflect: bool = False) -> 
 def random_rotate(x: tf.Tensor, max_rot_deg: float = 10) -> tf.Tensor:
     mat = random_rotate_matrix(max_rot_deg)
     return apply_affine_mat(x, mat)
-
-
-
-
-# map data augmentations
-
-# save augmented data as TF records
