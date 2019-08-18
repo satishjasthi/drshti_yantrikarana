@@ -180,7 +180,7 @@ class ConvertImages2Hdf5():
         self.augment_bool = augment_bool
         self.augmentations_list = augmentations_list
         self.save_augmentation_flag = save_augmentation_flag
-        self.augmentation_func_map = {'random_rotate':random_rotate,
+        self.augmentation_func_map = {'random_rotate':random_rotate_90,
                                       'horizonatal_flip': random_flip,
                                       }
 
@@ -191,7 +191,9 @@ class ConvertImages2Hdf5():
         aug_images = list()
         for aug in self.augmentations_list:
             assert aug in self.augmentations_list, f'Augmention method not listed in {self.augmentation_func_map.keys()}'
-            aug_images.append(self.augmentation_func_map[aug])
+            aug_image = self.augmentation_func_map[aug](image)
+            assert len(aug_image.shape) == 3
+            aug_images.append(aug_image)
         aug_labels = [label]*len(aug_images)
         return aug_images, aug_labels
 
@@ -215,7 +217,7 @@ class ConvertImages2Hdf5():
                                                      atom=tables.UInt8Atom(),
                                                      shape=[0,1])
 
-        classes = sorted(list(directory.glob('*')))
+        classes = [class_path.name for class_path in sorted(list(directory.glob('*')))]
 
         # save class index map to hdf5 file
         class_index_df = pd.DataFrame(data={'class':classes,
@@ -223,28 +225,30 @@ class ConvertImages2Hdf5():
                            }
                      )
         class_index_df.to_hdf(path_or_buf=hdf5_save_file.as_posix(), key='/class_index_df')
-
-        for image in directory.glob('*/*'):
-            image_name = image.name
-            image_ext = image.stem
-            class_name = image.parent
+        for image_path in directory.glob('*/*'):
+            image_name = image_path.name
+            file_name = image_path.stem
+            file_ext = image_path.suffix
+            class_name = image_path.parent.name
             class_index = class_index_df[class_index_df['class']==class_name]['label_index'].values[0]
 
             # save augmented images locally if aug is enabled
             if self.save_augmentation_flag:
-                directory_root = image.parent.parent.parent
+                directory_root = image_path.parent.parent.parent
                 save_aug_dir = directory_root/f'augmented_images'
+                save_aug_dir.mkdir(parents=True, exist_ok=True)
                 train_aug_dir = save_aug_dir/f'train'
+                train_aug_dir.mkdir(parents=True, exist_ok=True)
                 # create class wise dirs
-                for class_name in class_index_df['class']:
-                    class_dir = train_aug_dir/f'{class_name}'
-                    class_dir.mkdir(parents=True, exists_ok=True)
+                for classlabel in class_index_df['class']:
+                    class_dir = train_aug_dir/f'{classlabel}'
+                    class_dir.mkdir(parents=True, exist_ok=True)
 
             # read image and resize it
-            img = np.array(Image.open(image))
+            img = np.array(Image.open(image_path))
             rs_img = resize_image(img_tensor=tf.convert_to_tensor(img),
                                   resize_shape=(self.resizeHeight, self.resizeWidth)
-                                  ).numpy()[None]
+                                  ).numpy()
 
             if not self.augment_bool:
                 # add image and label to hdf5 earray
@@ -252,18 +256,21 @@ class ConvertImages2Hdf5():
                 labels_erray.append(np.array(class_index).reshape(-1, 1))
             else:
                 aug_images, aug_labels = self.apply_data_augmentations(rs_img, class_index)
-                for image, label in zip(aug_images, aug_labels):
-                    images_earray.append(image)
-                    labels_erray.append(np.array(label).reshape(-1, 1))
+                num_augs = 0
+                for aug_image, aug_label in zip(aug_images, aug_labels):
+                    num_augs += 1
+                    aug_np_image = aug_image.numpy()
+                    images_earray.append(aug_np_image[None])
+                    labels_erray.append(np.array(aug_label).reshape(-1, 1))
 
                     # save aug images
                     if self.save_augmentation_flag:
-                        pil_img = Image.fromarray(image.astype('uint8'))
-                        dest = train_aug_dir/f'{class_name}/{image_name}'
+                        pil_img = Image.fromarray(aug_np_image.astype('uint8'))
+                        dest = train_aug_dir/f'{class_name}/{file_name}_{num_augs}{file_ext}'
                         pil_img.save(dest.as_posix())
 
                 # add original image
-                images_earray.append(rs_img)
+                images_earray.append(rs_img[None])
                 labels_erray.append(np.array(class_index).reshape(-1, 1))
 
 
@@ -352,7 +359,7 @@ def random_rotate_90(x: tf.Tensor) -> tf.Tensor:
     :param x: Input image.
     :return: Transformed image.
     """
-    return tf.image.rot90(x, tf.random.uniform(shape=[], minval=0, maxval=4, dtype=tf.int32))
+    return tf.image.rot90(x, tf.random.uniform(shape=[], minval=10, maxval=15, dtype=tf.int32))
 
 def deg2rad(x: tf.Tensor) -> tf.Tensor:
     """
@@ -361,11 +368,6 @@ def deg2rad(x: tf.Tensor) -> tf.Tensor:
     :return: Angle in radians
     """
     return (x * np.pi) / 180
-
-def random_rotate_matrix(max_deg: float = 10) -> tf.Tensor:
-    deg = tf.random.uniform(shape=[], minval=-max_deg, maxval=max_deg, dtype=tf.float32)
-    rad = deg2rad(deg)
-    return tf.convert_to_tensor([[tf.cos(rad), -tf.sin(rad), 0], [tf.sin(rad), tf.cos(rad), 0], [0, 0, 1]])
 
 
 def affine_grid_generator(H: int, W: int, tfm_mat) -> tf.Tensor:
@@ -502,6 +504,15 @@ def apply_affine_mat(x: tf.Tensor, mat: tf.Tensor, do_reflect: bool = False) -> 
     x = tf.squeeze(x, [0])
     return x
 
-def random_rotate(x: tf.Tensor, max_rot_deg: float = 10) -> tf.Tensor:
-    mat = random_rotate_matrix(max_rot_deg)
-    return apply_affine_mat(x, mat)
+if __name__ == "__main__":
+    o = ConvertImages2Hdf5(data_dir=Path(r"C:\Users\neere\Desktop\deleteme\traintestSplit"),
+                           hdf5_save_dir=Path(r"C:\Users\neere\Desktop\deleteme\HDF5Files"),
+                           resizeHeight=90,
+                           resizeWidth=90,
+                           augment_bool=True,
+                           augmentations_list=['random_rotate',
+                                               'horizonatal_flip'
+                                               ],
+                           save_augmentation_flag=True
+                           )
+    o.createTrainTestHdf5Files()
