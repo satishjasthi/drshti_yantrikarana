@@ -13,7 +13,7 @@ from pathlib import Path
 
 import tensorflow as tf
 
-from data import ConvertData2Hdf5, TFRecords
+from data import ConvertData2Hdf5, TFRecords, preprocessTfDataset
 from moduleLogger import DyLogger
 
 logger = DyLogger(logging_level=logging.DEBUG)
@@ -23,6 +23,8 @@ class DrshtiYantrikarana(object):
     def __init__(self,
                  modelName: str = None,
                  raw_data: Path = None,
+                 data_mean: list = None,
+                 data_std: list = None
                  ):
         self.modelName = modelName
         self.logger = logger.get_logger(__name__)
@@ -47,16 +49,16 @@ class DrshtiYantrikarana(object):
                          resizeWidth: int = None,
                          augment_bool: bool = None,
                          augmentations_list: list = None,
-                         save_augmentation_flag: bool = None
-
+                         save_augmentation_flag: bool = None,
+                         batch_size = None,
                          ):
-        self.logger.logging.info(
+        self.logger.info(
             'Preparing data for model training..........................................................................')
 
         # read raw data and create hdf5 files
-        self.logger.logging.debug(
+        self.logger.debug(
             f'Raw data is in {data_format} format.................................................')
-        self.logger.logging.info(
+        self.logger.info(
             'Converting raw data to hdf5 files.....................................................')
         self.hdf5DataCreator = ConvertData2Hdf5(data_dir=self.trainTestSplitDir,
                                                 hdf5_save_dir=self.hdf5_save_dir,
@@ -70,11 +72,12 @@ class DrshtiYantrikarana(object):
                                                 augment_bool=augment_bool,
                                                 augmentations_list=augmentations_list,
                                                 save_augmentation_flag=save_augmentation_flag)
-        self.logger.logging.debug(
+        self.hdf5DataCreator.createTrainTestHdf5Files()
+        self.logger.debug(
             'Finished converting raw data to hdf5 files.....................................................')
 
         # create tfrecords from hdf5 files
-        self.logger.logging.info(
+        self.logger.info(
             'Converting hdf5 data to TFRecords..........................................................................')
 
         self.tfRecordCreator = TFRecords(mode='train',
@@ -83,8 +86,15 @@ class DrshtiYantrikarana(object):
                                          TrainTfRecord_data=self.TrainTfRecord_data,
                                          TestTfRecord_data=self.TrainTfRecord_data)
         self.tfRecordCreator.writeTfRecord()
-        self.parsed_image_dataset = self.tfRecordCreator.writeTfRecord()
+        self.dataset = self.tfRecordCreator.readTfRecord()
 
-        self.dataset = tf.data.Dataset.from_generator(self.parsed_image_dataset)
+        # define batch size and apply prefetch
+        self.dataset = self.dataset.shuffle(buffer_size=batch_size*2)
+        self.dataset = self.dataset.map(map_func=preprocessTfDataset)
+        self.dataset = self.dataset.batch(batch_size=batch_size)
+        self.dataset = self.dataset.prefetch(buffer_size=batch_size*2)
 
         # create tf dataset from tf records
+
+o = DrshtiYantrikarana(modelName='ResNet', raw_data=Path(r"C:\Users\neere\Desktop\deleteme\raw_dir"))
+o.prepareModelData(data_format="images",resizeWidth=90, resizeHeight=90, augment_bool=True,  save_augmentation_flag=True, augmentations_list=['random_rotate', 'horizonatal_flip' ], batch_size=1)
