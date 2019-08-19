@@ -7,6 +7,7 @@ About:
 
 Author: Satish Jasthi
 """
+import logging
 from pathlib import Path
 
 import tables
@@ -17,11 +18,14 @@ import tensorflow as tf
 # Data ingestion........................................................................................................
 from PIL import Image
 
-trainTestSplitDir = ''
+from moduleLogger import DyLogger
 
-class TfRecords(object):
+logger = DyLogger(logging_level=logging.DEBUG)
+logger.get_logger(__name__)
+
+class TFRecords(object):
     """
-    Class to create TfRecords
+    Class to create TFRecords
     mode: train ot
 
     """
@@ -33,21 +37,34 @@ class TfRecords(object):
                  TestTfRecord_data=None
                  ):
         self.mode = mode
+        self.logger = logger.get_logger(__name__)
         self.TrainHdf5_data = TrainHdf5_data
         self.TestHdf5_data  =TestHdf5_data
         self.TrainTfRecord_data = TrainTfRecord_data
         self.TestTfRecord_data = TestTfRecord_data
 
-        if mode == 'train':
+        self.logger.logging.debug(f'Reading TrainHdf5_data from :{self.TrainHdf5_data.as_posix()}')
+        self.logger.logging.debug(f'Reading TestHdf5_data from :{self.TestHdf5_data.as_posix()}')
+        self.logger.logging.debug(f'Saving TrainTfRecord_data from :{self.TrainTfRecord_data.as_posix()}')
+        self.logger.logging.debug(f'Saving TestTfRecord_data from :{self.TestTfRecord_data.as_posix()}')
+
+
+        self.logger.logging.debug(f'Creating TF records for {self.mode} data')
+        if self.mode == 'train':
             if self.TrainHdf5_data.exists():
+
                 self.hdf5_data = tables.open_file(self.TrainHdf5_data.as_posix(), mode='r')
             else:
+                logger.logging.error('Error occured: '+ f'Unable to find {TrainHdf5_data.as_posix()}, Please create hdf5 file '
+                f'before running tf records')
                 raise IOError(
                     f'Unable to find {TrainHdf5_data.as_posix()}, Please create hdf5 file before running tf records')
-        elif mode == 'test':
+        elif self.mode == 'test':
             if self.TestHdf5_data.exists():
                 self.hdf5_data = tables.open_file(self.TestHdf5_data.as_posix(), mode='r')
             else:
+                logger.logging.error('Error occured: ' + f'Unable to find {TrainHdf5_data.as_posix()}, Please create hdf5 file '
+                f'before running tf records')
                 raise IOError(
                     f'Unable to find {TestHdf5_data.as_posix()}, Please create hdf5 file before running tf records')
 
@@ -86,11 +103,14 @@ class TfRecords(object):
         :return:
         """
         # read images and labels from hdf5
+        self.logger.logging.debug(f'Creating {self.mode} train records')
         if self.mode == 'train':
             hdf5_data_arrays = tables.open_file(self.TrainHdf5_data.as_posix(), w='r')
         elif self.mode == 'test':
             hdf5_data_arrays = tables.open_file(self.TestHdf5_data.as_posix(), w='r')
         else:
+            self.logger.logging.error('Error occured: '+ f'mode: {self.mode} is not valid, please choose mode between '
+            f'(train, test)')
             raise NotImplementedError(f'mode: {self.mode} is not valid, please choose mode between (train, test)')
 
         # image generator
@@ -101,6 +121,7 @@ class TfRecords(object):
         unique_labels = list(np.unique(label_names))
         label_index_map = {label: index for index, label in enumerate(unique_labels)}
 
+        self.logger.logging.debug(f'Saving {self.mode} tf record files')
         if self.mode == 'train':
             with tf.compat.v1.python_io.TFRecordWriter(self.TrainTfRecord_data.as_posix()) as writer:
                 for image_arr, label in zip(image_gen, label_names):
@@ -135,17 +156,20 @@ class TfRecords(object):
         Method to read tf record format image data
         :return:
         """
+        self.logger.logging.debug(f'Reading {self.mode} tf record files')
         if self.mode == 'train':
             raw_image_dataset = tf.data.TFRecordDataset(self.TrainTfRecord_data)
         elif self.mode == 'test':
             raw_image_dataset = tf.data.TFRecordDataset(self.TestTfRecord_data)
         else:
+            self.logger.logging.error('Error occured' + f'mode: {self.mode} is not valid, please choose mode between '
+            f'(train, test)')
             raise NotImplementedError(f'mode: {self.mode} is not valid, please choose mode between (train, test)')
         parsed_image_dataset = raw_image_dataset.map(self._parse_image_function)
         return parsed_image_dataset
 
 
-class ConvertImages2Hdf5():
+class ConvertData2Hdf5():
     """
     Class to convert images to hdf5 file system by saving images and labels as ndarrays
     as shown below:
@@ -163,15 +187,26 @@ class ConvertImages2Hdf5():
                 imgt1
     """
 
-    def __init__(self, data_dir:Path,
-                 hdf5_save_dir:Path,
-                 resizeHeight:int,
-                 resizeWidth:int,
-                 augment_bool:bool,
-                 augmentations_list:list,
-                 save_augmentation_flag:bool,
+    def __init__(self, data_dir:Path=None,
+                 hdf5_save_dir:Path=None,
+                 x_train_arr:np.array=None,
+                 y_train_arr:np.array=None,
+                 x_test_arr:np.array=None,
+                 y_test_arr:np.array=None,
+                 data_format:str=None,
+                 resizeHeight:int=None,
+                 resizeWidth:int=None,
+                 augment_bool:bool=None,
+                 augmentations_list:list=None,
+                 save_augmentation_flag:bool=None,
                  ):
+        self.logger = logger
         self.data_dir = data_dir
+        self.data_format= data_format # can take values "np_array", "images"
+        self.x_train_arr = x_train_arr
+        self.y_train_arr = y_train_arr
+        self.x_test_arr = x_test_arr
+        self.y_test_arr = y_test_arr
         self.train_dir = self.data_dir/'train'
         self.test_dir = self.data_dir / 'test'
         self.hdf5_save_dir = hdf5_save_dir
@@ -205,6 +240,7 @@ class ConvertImages2Hdf5():
         :return: None
         """
         hdf5_save_file = self.hdf5_save_dir/f'{directory.name}.h5'
+        self.logger.logging.debug(f'Created {hdf5_save_file}')
         hdf5_save_file_obj = tables.open_file(hdf5_save_file.as_posix(), mode='w')
 
         # create expandable arrays to store images and their labels as arrays
@@ -217,64 +253,118 @@ class ConvertImages2Hdf5():
                                                      atom=tables.UInt8Atom(),
                                                      shape=[0,1])
 
-        classes = [class_path.name for class_path in sorted(list(directory.glob('*')))]
+        self.logger.logging.debug(f'Raw data is in {self.data_format} format.................................................')
+        if self.data_format == 'np_array':
+            classes = np.unique(self.y_train_arr)
+            self.logger.logging.debug(f'Unique classes identified: {classes}')
 
-        # save class index map to hdf5 file
-        class_index_df = pd.DataFrame(data={'class':classes,
-                           'label_index':list(range(0, len(classes)))
-                           }
-                     )
-        class_index_df.to_hdf(path_or_buf=hdf5_save_file.as_posix(), key='/class_index_df')
-        for image_path in directory.glob('*/*'):
-            image_name = image_path.name
-            file_name = image_path.stem
-            file_ext = image_path.suffix
-            class_name = image_path.parent.name
-            class_index = class_index_df[class_index_df['class']==class_name]['label_index'].values[0]
+            if self.save_augmentation_flag:
+                self.logger.logging.debug(f'Data save augmentation enabled, Creating dirs to store augmentations')
+                directory_root = directory.parent
+                self.logger.logging.debug(f'directory_root: {directory_root.as_posix()}')
+                save_aug_dir = directory_root / f'augmented_images'
+                save_aug_dir.mkdir(parents=True, exist_ok=True)
+                self.logger.logging.debug(f'Creating save_aug_dir: {save_aug_dir.as_posix()}')
+                train_aug_dir = save_aug_dir / f'train'
+                train_aug_dir.mkdir(parents=True, exist_ok=True)
+                self.logger.logging.debug(f'Creating train_aug_dir: {train_aug_dir.as_posix()}')
+                # create class wise dirs
+                for classlabel in classes:
+                    class_dir = train_aug_dir / f'{classlabel}'
+                    class_dir.mkdir(parents=True, exist_ok=True)
+                    self.logger.logging.debug(f'Creating class_dir: {class_dir.as_posix()}')
+
+            # for training data
+            file_name = 0
+            for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
+                file_name += 1
+                if not self.augment_bool:
+                    assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
+                    assert type(label) is int, "Img array label is not an integer"
+                    images_earray.append(img_arr.reshape(self.resizeHeight, self.resizeWidth, 3))
+                    labels_erray.append(label)
+                else:
+                    aug_images, aug_labels = self.apply_data_augmentations(img_arr, label)
+                    num_augs = 0
+                    for aug_image, aug_label in zip(aug_images, aug_labels):
+                        num_augs += 1
+                        aug_np_image = aug_image.numpy()
+                        images_earray.append(aug_np_image[None])
+                        labels_erray.append(np.array(aug_label).reshape(-1, 1))
+                        # save aug images
+                        if self.save_augmentation_flag:
+                            pil_img = Image.fromarray(aug_np_image.astype('uint8'))
+                            dest = train_aug_dir / f'{label}/{file_name}_{num_augs}.jpg'
+                            self.logger.logging.debug(f'Saving augmented image: {dest.as_posix()}')
+                            pil_img.save(dest.as_posix())
+
+
+        elif self.data_format == "images":
+            classes = [class_path.name for class_path in sorted(list(directory.glob('*')))]
+            self.logger.logging.debug(f'Unique classes identified: {classes}')
+
+            # save class index map to hdf5 file
+            class_index_df = pd.DataFrame(data={'class':classes,
+                               'label_index':list(range(0, len(classes)))
+                               }
+                         )
+            class_index_df.to_hdf(path_or_buf=hdf5_save_file.as_posix(), key='/class_index_df')
 
             # save augmented images locally if aug is enabled
             if self.save_augmentation_flag:
-                directory_root = image_path.parent.parent.parent
-                save_aug_dir = directory_root/f'augmented_images'
+                directory_root = directory.parent
+                self.logger.logging.debug(f'directory_root: {directory_root.as_posix()}')
+                save_aug_dir = directory_root / f'augmented_images'
                 save_aug_dir.mkdir(parents=True, exist_ok=True)
-                train_aug_dir = save_aug_dir/f'train'
+                self.logger.logging.debug(f'Creating save_aug_dir: {save_aug_dir.as_posix()}')
+                train_aug_dir = save_aug_dir / f'train'
                 train_aug_dir.mkdir(parents=True, exist_ok=True)
+                self.logger.logging.debug(f'Creating train_aug_dir: {train_aug_dir.as_posix()}')
                 # create class wise dirs
                 for classlabel in class_index_df['class']:
-                    class_dir = train_aug_dir/f'{classlabel}'
+                    class_dir = train_aug_dir / f'{classlabel}'
                     class_dir.mkdir(parents=True, exist_ok=True)
+                    self.logger.logging.debug(f'Creating class_dir: {class_dir.as_posix()}')
 
-            # read image and resize it
-            img = np.array(Image.open(image_path))
-            rs_img = resize_image(img_tensor=tf.convert_to_tensor(img),
-                                  resize_shape=(self.resizeHeight, self.resizeWidth)
-                                  ).numpy()
+            for image_path in directory.glob('*/*'):
+                image_name = image_path.name
+                file_name = image_path.stem
+                file_ext = image_path.suffix
+                class_name = image_path.parent.name
+                class_index = class_index_df[class_index_df['class']==class_name]['label_index'].values[0]
 
-            if not self.augment_bool:
-                # add image and label to hdf5 earray
-                images_earray.append(rs_img)
-                labels_erray.append(np.array(class_index).reshape(-1, 1))
-            else:
-                aug_images, aug_labels = self.apply_data_augmentations(rs_img, class_index)
-                num_augs = 0
-                for aug_image, aug_label in zip(aug_images, aug_labels):
-                    num_augs += 1
-                    aug_np_image = aug_image.numpy()
-                    images_earray.append(aug_np_image[None])
-                    labels_erray.append(np.array(aug_label).reshape(-1, 1))
+                # read image and resize it
+                img = np.array(Image.open(image_path))
+                rs_img = resize_image(img_tensor=tf.convert_to_tensor(img),
+                                      resize_shape=(self.resizeHeight, self.resizeWidth)
+                                      ).numpy()
 
-                    # save aug images
-                    if self.save_augmentation_flag:
-                        pil_img = Image.fromarray(aug_np_image.astype('uint8'))
-                        dest = train_aug_dir/f'{class_name}/{file_name}_{num_augs}{file_ext}'
-                        pil_img.save(dest.as_posix())
+                if not self.augment_bool:
+                    # add image and label to hdf5 earray
+                    images_earray.append(rs_img)
+                    labels_erray.append(np.array(class_index).reshape(-1, 1))
+                else:
+                    aug_images, aug_labels = self.apply_data_augmentations(rs_img, class_index)
+                    num_augs = 0
+                    for aug_image, aug_label in zip(aug_images, aug_labels):
+                        num_augs += 1
+                        aug_np_image = aug_image.numpy()
+                        images_earray.append(aug_np_image[None])
+                        labels_erray.append(np.array(aug_label).reshape(-1, 1))
 
-                # add original image
-                images_earray.append(rs_img[None])
-                labels_erray.append(np.array(class_index).reshape(-1, 1))
+                        # save aug images
+                        if self.save_augmentation_flag:
+                            pil_img = Image.fromarray(aug_np_image.astype('uint8'))
+                            dest = train_aug_dir/f'{class_name}/{file_name}_{num_augs}{file_ext}'
+                            self.logger.logging.debug(f'Saving augmented image: {dest.as_posix()}')
+                            pil_img.save(dest.as_posix())
+
+                    # add original image
+                    images_earray.append(rs_img[None])
+                    labels_erray.append(np.array(class_index).reshape(-1, 1))
 
 
-        hdf5_save_file_obj.close()
+            hdf5_save_file_obj.close()
 
     def createTrainTestHdf5Files(self):
         self.createHdf5File(directory=self.train_dir)
@@ -347,6 +437,7 @@ def random_flip(x: tf.Tensor, flip_vert: bool = False) -> tf.Tensor:
     :param flip_vert: Whether to perform vertical flipping. Default: False.
     :return: Transformed image.
     """
+    logger.logging.debug('Applying random flip')
     x = tf.image.random_flip_left_right(x)
     if flip_vert:
         x = random_rotate_90(x)
@@ -359,6 +450,7 @@ def random_rotate_90(x: tf.Tensor) -> tf.Tensor:
     :param x: Input image.
     :return: Transformed image.
     """
+    logger.logging.debug('Applying random rotate 90')
     return tf.image.rot90(x, tf.random.uniform(shape=[], minval=10, maxval=15, dtype=tf.int32))
 
 def deg2rad(x: tf.Tensor) -> tf.Tensor:
@@ -505,7 +597,7 @@ def apply_affine_mat(x: tf.Tensor, mat: tf.Tensor, do_reflect: bool = False) -> 
     return x
 
 if __name__ == "__main__":
-    o = ConvertImages2Hdf5(data_dir=Path(r"C:\Users\neere\Desktop\deleteme\traintestSplit"),
+    o = ConvertData2Hdf5(data_dir=Path(r"C:\Users\neere\Desktop\deleteme\traintestSplit"),
                            hdf5_save_dir=Path(r"C:\Users\neere\Desktop\deleteme\HDF5Files"),
                            resizeHeight=90,
                            resizeWidth=90,

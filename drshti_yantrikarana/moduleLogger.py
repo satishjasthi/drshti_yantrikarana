@@ -12,14 +12,17 @@ import logging.handlers
 from pathlib import Path
 
 
-class DyLogger(object):
+class DyLogger():
     """
     Class for central logging based
     logger_name: name of loger file
     logger_level: logging.INFO, logging.DEBUG, etc
     """
-    def __init__(self, logger_name:str, logging_level:int):
-        self.LOG_FILE = Path(__file__).resolve().parent/f'{logger_name}.txt'
+    def __init__(self, logger_name:str=None, logging_level:int=None):
+        if logger_name is None:
+            self.LOG_FILE = Path(__file__).resolve().parent / 'logs.txt'
+        else:
+            self.LOG_FILE = Path(__file__).resolve().parent/f'{logger_name}.txt'
         self.LOGGING_LEVEL = logging_level
         self.LOG_FORMAT = "%(levelname)s %(filename)s %(module)s %(funcName)s %(asctime)s - %(message)s"
 
@@ -35,3 +38,5 @@ class DyLogger(object):
 
         self.logging.addHandler(handler)
 
+    def get_logger(self, name):
+        return logging.getLogger(name)
