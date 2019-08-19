@@ -16,10 +16,13 @@ class Networks(object):
     def __init__(self,
                  depth:int=None,
                  num_class:int=None,
-                 input_shape:tuple=None):
+                 input_shape:tuple=None,
+                 name=None
+                 ):
         self.depth = depth
         self.input_shape = input_shape
         self.num_class = num_class
+        self.name=None
 
 class Resenet(Networks):
     """
@@ -84,7 +87,8 @@ class DenseNet(Networks):
 
 if __name__ == "__main__":
     o = Resenet(input_shape=(224,224,3),
-                num_class=4
+                num_class=4,
+                name="Resenet"
                 )
     model = o.get_pretrained_model()
     print(model.summary())
