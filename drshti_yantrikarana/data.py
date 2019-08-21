@@ -325,7 +325,7 @@ class ConvertData2Hdf5():
 
             # for training data
             file_name = 0
-            if not self.hdf5_save_file.exists(): ### remove
+            if not hdf5_save_file.exists(): ### remove
                 for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
                     file_name += 1
                     label = label[0] # since each label is a list instead of int
