@@ -36,9 +36,11 @@ class TFRecords(object):
                  TrainHdf5_data:Path=None,
                  TestHdf5_data:Path=None,
                  TrainTfRecord_data=None,
-                 TestTfRecord_data=None
+                 TestTfRecord_data=None,
+                 num_classes=None
                  ):
         self.mode = mode
+        self.num_classes=num_classes
         self.logger = logger.get_logger(__name__)
         self.TrainHdf5_data = TrainHdf5_data
         self.TestHdf5_data  =TestHdf5_data
@@ -123,28 +125,29 @@ class TFRecords(object):
         image_gen = hdf5_data_arrays.root.images
 
         # create label index map
-        label_names = np.squeeze(hdf5_data_arrays.root.labels[:])
-        unique_labels = list(np.unique(label_names))
+        label_names = np.squeeze(hdf5_data_arrays.root.labels)
+        # unique_labels = list(np.unique(label_names))
+        unique_labels = list(range(0, self.num_classes))
         label_index_map = {label: index for index, label in enumerate(unique_labels)}
 
         self.logger.debug(f'Saving {self.mode} tf record files')
         if self.mode == 'train':
             with tf.compat.v1.python_io.TFRecordWriter(self.TrainTfRecord_data.as_posix()) as writer:
                 for image_arr, label in zip(image_gen, label_names):
-                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[label])
+                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[np.argmax(label)])
                     writer.write(tf_example.SerializeToString())
 
             hdf5_data_arrays.close()
         elif self.mode == 'test':
             with tf.compat.v1.python_io.TFRecordWriter(self.TestTfRecord_data.as_posix()) as writer:
                 for image_arr, label in zip(image_gen, label_names):
-                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[label])
+                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[np.argmax(label)])
                     writer.write(tf_example.SerializeToString())
 
             hdf5_data_arrays.close()
 
-    @staticmethod
-    def _parse_image_function(example_proto):
+    # @staticmethod
+    def _parse_image_function(self,example_proto):
         # Create a dictionary describing the features.
         image_feature_description = {
             'height': tf.io.FixedLenFeature([], tf.int64),
@@ -155,7 +158,12 @@ class TFRecords(object):
         }
 
         # Parse the input tf.Example proto using the dictionary above.
-        return tf.io.parse_single_example(example_proto, image_feature_description)
+        parsed_dataset =  tf.io.parse_single_example(example_proto, image_feature_description)
+        image = tf.io.parse_tensor(parsed_dataset['image_raw'], out_type=tf.uint8)
+        image_shape = [parsed_dataset['height'], parsed_dataset['width'], parsed_dataset['depth']]
+        image = tf.reshape(image, image_shape)
+        label_one_hot = tf.one_hot(parsed_dataset['label'], depth=self.num_classes)
+        return image, label_one_hot
 
     def readTfRecord(self):
         """
@@ -171,8 +179,9 @@ class TFRecords(object):
             self.logger.error('Error occured' + f'mode: {self.mode} is not valid, please choose mode between '
             f'(train, test)')
             raise NotImplementedError(f'mode: {self.mode} is not valid, please choose mode between (train, test)')
-        parsed_image_dataset = raw_image_dataset.map(self._parse_image_function)
-        return parsed_image_dataset
+        parsed_dataset = raw_image_dataset.map(self._parse_image_function)
+
+        return parsed_dataset
 
 def preprocessTfDataset(image_label_instance):
     image = tf.image.decode_image(image_label_instance['image_raw'], dtype=tf.float64)
@@ -215,8 +224,10 @@ class ConvertData2Hdf5():
                  augment_bool:bool=None,
                  augmentations_list:list=None,
                  save_augmentation_flag:bool=None,
+                 num_classes:int=None
                  ):
         self.logger = logger.get_logger(__name__)
+        self.num_classes = num_classes
         self.data_dir = data_dir
         self.data_format= data_format # can take values "np_array", "images"
         self.x_train_arr = x_train_arr
@@ -299,8 +310,8 @@ class ConvertData2Hdf5():
                 assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
                 assert type(label) == np.uint8, "Img array label is not an integer"
                 if not self.augment_bool:
-                    images_earray.append(img_arr.reshape(self.resizeHeight, self.resizeWidth, 3))
-                    labels_erray.append(label)
+                    images_earray.append(img_arr[None])
+                    labels_erray.append(np.array(label).reshape(-1, 1))
                 else:
                     aug_images, aug_labels = self.apply_data_augmentations(img_arr, label)
                     num_augs = 0
@@ -308,7 +319,7 @@ class ConvertData2Hdf5():
                         num_augs += 1
                         aug_np_image = aug_image.numpy()
                         images_earray.append(aug_np_image[None])
-                        labels_erray.append(np.array(aug_label).reshape(-1, 1))
+                        labels_erray.append(aug_label)
                         # save aug images
                         if self.save_augmentation_flag:
                             pil_img = Image.fromarray(aug_np_image.astype('uint8'))
@@ -629,6 +640,7 @@ if __name__ == "__main__":
     #                      save_augmentation_flag=True,
     #                                )
     # o.createTrainTestHdf5Files()
-    o = TFRecords(mode='train', TrainHdf5_data=Path("/Users/satishjasthi/Downloads/raw_data/HDF5/train.h5"),
-                  TrainTfRecord_data=Path("/Users/satishjasthi/Downloads/raw_data/TFRecords/train"))
-    o.writeTfRecord()
+    o = TFRecords(mode='train', TrainHdf5_data=Path(r"C:\Users\neere\Desktop\deleteme\raw_dir\HDF5Data\train.h5"),
+                  TrainTfRecord_data=Path(r"C:\Users\neere\Desktop\deleteme\raw_dir\TFRecords\train.tfrecords"))
+    # o.writeTfRecord()
+    raw_data = o.readTfRecord()

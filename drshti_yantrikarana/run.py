@@ -15,7 +15,7 @@ import tensorflow as tf
 from tensorflow.python import keras
 
 from data import ConvertData2Hdf5, TFRecords, preprocessTfDataset
-from models import custom
+from models import DavidNet
 from moduleLogger import DyLogger
 from test import EvaluateModel
 from train import ModelTraining
@@ -26,11 +26,13 @@ class DrshtiYantrikarana(object):
 
     def __init__(self,
                  modelName: str = None,
+                 num_classes=None,
                  raw_data: Path = None,
                  data_mean: list = None,
                  data_std: list = None
                  ):
         self.modelName = modelName
+        self.num_classes = num_classes
         self.logger = logger.get_logger(__name__)
         self.raw_data = raw_data
         self.trainTestSplitDir = self.raw_data / 'TrainTestSplitData'
@@ -41,8 +43,8 @@ class DrshtiYantrikarana(object):
 
         self.tfrecords_save_dir = self.raw_data / 'TFRecords'
         self.tfrecords_save_dir.mkdir(exist_ok=True, parents=True)
-        self.TrainTfRecord_data = self.tfrecords_save_dir/'train'
-        self.TestTfRecord_data = self.tfrecords_save_dir / 'test'
+        self.TrainTfRecord_data = self.tfrecords_save_dir/'train.tfrecords'
+        self.TestTfRecord_data = self.tfrecords_save_dir / 'test.tfrecords'
 
 
     def prepareModelData(self, data_format: (np.array, str) = None,
@@ -66,6 +68,7 @@ class DrshtiYantrikarana(object):
         self.logger.info(
             'Converting raw data to hdf5 files.....................................................')
         self.hdf5DataCreator = ConvertData2Hdf5(data_dir=self.trainTestSplitDir,
+                                                num_classes=self.num_classes,
                                                 hdf5_save_dir=self.hdf5_save_dir,
                                                 x_train_arr=x_train,
                                                 y_train_arr=y_train,
@@ -86,11 +89,13 @@ class DrshtiYantrikarana(object):
             'Converting hdf5 data to TFRecords..........................................................................')
 
         self.tfRecordCreator_train = TFRecords(mode='train',
-                                         TrainHdf5_data=self.TrainHdf5_data,
-                                         TestHdf5_data=self.TestHdf5_data,
-                                         TrainTfRecord_data=self.TrainTfRecord_data,
-                                         TestTfRecord_data=self.TrainTfRecord_data)
+                                               num_classes=self.num_classes,
+                                               TrainHdf5_data=self.TrainHdf5_data,
+                                               TestHdf5_data=self.TestHdf5_data,
+                                               TrainTfRecord_data=self.TrainTfRecord_data,
+                                               TestTfRecord_data=self.TrainTfRecord_data)
         self.tfRecordCreator_test = TFRecords(mode='test',
+                                               num_classes=self.num_classes,
                                                TrainHdf5_data=self.TrainHdf5_data,
                                                TestHdf5_data=self.TestHdf5_data,
                                                TrainTfRecord_data=self.TrainTfRecord_data,
@@ -124,7 +129,7 @@ class DrshtiYantrikarana(object):
                     )->ModelTraining:
 
         # define network in keras
-        network = custom()
+        network = DavidNet()
         kmodel = network.get_model()
 
         # define callbacks
@@ -154,26 +159,31 @@ class DrshtiYantrikarana(object):
     
 
 def main():
-    cntr = DrshtiYantrikarana(raw_data=Path('/Users/satishjasthi/Downloads/raw_data/'))
+    cntr = DrshtiYantrikarana(raw_data=Path(r'C:\Users\neere\Desktop\deleteme\raw_dir'), num_classes=10)
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+    # x_train  = x_train[0:100, :, :, :]
+    # y_train = y_train[0:100,:]
+    # x_test = x_test[0:100, :,:,:]
+    # y_test = y_test[0:100,:]
+
     train_dataset, test_dataset = cntr.prepareModelData(data_format="np_array",
                                                           x_train=x_train,
                                                           x_test=x_test,
                                                           y_train=y_train,
                                                           y_test=y_test,
-                                                          batch_size=10,
+                                                          batch_size=128,
                                                           resizeHeight=32,
                                                           resizeWidth=32,
-                                                          augment_bool=True,
+                                                          augment_bool=False,
                                                           augmentations_list=['random_rotate', 'horizonatal_flip'],
                                                           save_augmentation_flag=True)
     cntr.train_model(model_name='custom',
                      train_dataset=train_dataset,
                      test_dataset=test_dataset,
-                     batch_size=10,
+                     batch_size=512,
                      loss=keras.losses.categorical_crossentropy,
-                     epochs=3,
-                     optimizer=keras.optimizers.sgd())
+                     epochs=20,
+                     optimizer=keras.optimizers.sgd(lr=0.08))
 
 if __name__ == "__main__":
     main()
