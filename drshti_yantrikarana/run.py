@@ -160,7 +160,7 @@ class DrshtiYantrikarana(object):
 
 def main():
     # cntr = DrshtiYantrikarana(raw_data=Path(r'C:\Users\neere\Desktop\deleteme\raw_dir'), num_classes=10)
-    cntr = DrshtiYantrikarana(raw_data=Path('./'), num_classes=10)
+    cntr = DrshtiYantrikarana(raw_data=Path('../'), num_classes=10)
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
     # x_train  = x_train[0:100, :, :, :]
     # y_train = y_train[0:100,:]

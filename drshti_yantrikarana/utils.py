@@ -6,6 +6,7 @@ About:
 
 Author: @NJ2020
 """
+from collections import namedtuple
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,14 +14,28 @@ import tensorflow as tf
 from PIL import Image
 import numpy as np
 
+# class PiecewiseLinear(namedtuple('PiecewiseLinear', ('knots', 'vals'))):
+#     def __call__(self, t):
+#         return np.interp([t], self.knots, self.vals)[0]
+#
+# Lr_schedule = PiecewiseLinear([0, 5, 24], [0, 0.4, 0])
+# lr_lambda = lambda epoch : Lr_schedule(epoch/24)/512
+#
+# lrs = []
+# for i in range(1,25):
+#     lrs.append(lr_lambda(i))
+# plt.plot(range(1,25), lrs)
+# plt.show()
+
 def OneCycleLrScheduler(current_epoch, ):
     total_epochs = 24
     print(f"!!Total Epochs used in LR schedule is {total_epochs}")
-    max_lr, transition_epoch = 0.8, 7
+    max_lr, transition_epoch = 0.4, 5
     print(f"!!Using transition epoch of {transition_epoch} in LR schedule")
     print(f"!!Using max_lr of {max_lr} in LR schedule")
     max_lr = max_lr
-    min_lr = max_lr/transition_epoch
+    # min_lr = max_lr/transition_epoch
+    min_lr = 0
 
     # annealing lr get from tf log graph and change an_start_lr
     an_start_lr = 0.08
