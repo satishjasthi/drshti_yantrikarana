@@ -90,7 +90,6 @@ class ModelTraining(object):
         self.model_history = self.kmodel.fit(self.train_dataset,
                                              epochs=self.epochs,
                                              callbacks=call_backs_list,
-                                             # validation_data=self.test_dataset,
-                                             workers=cpu_count()-3
+                                             validation_data=self.test_dataset,
                                              )
 
