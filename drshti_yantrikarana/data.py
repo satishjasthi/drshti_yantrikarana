@@ -340,7 +340,7 @@ class ConvertData2Hdf5():
                         num_augs += 1
                         aug_np_image = aug_image.numpy()
                         images_earray.append(aug_np_image[None])
-                        labels_erray.append(aug_label)
+                        labels_erray.append(np.array(aug_label).reshape(-1, 1))
                         # save aug images
                         if self.save_augmentation_flag:
                             pil_img = Image.fromarray(aug_np_image.astype('uint8'))

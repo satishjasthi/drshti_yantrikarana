@@ -175,7 +175,7 @@ def main():
                                                           batch_size=512,
                                                           resizeHeight=32,
                                                           resizeWidth=32,
-                                                          augment_bool=False,
+                                                          augment_bool=True,
                                                           augmentations_list=['random_rotate', 'horizonatal_flip'],
                                                           save_augmentation_flag=True)
     cntr.train_model(model_name='custom',

@@ -14,7 +14,7 @@ import tensorflow as tf
 from tensorflow.python import keras
 import matplotlib.pyplot as plt
 
-from utils import OneCycleLrScheduler, PiecewiseLinear_Lr_schedule
+from utils import OneCycleLrScheduler
 
 
 class ModelTraining(object):
@@ -84,7 +84,7 @@ class ModelTraining(object):
         :return:
         """
         # callbacks
-        call_backs_list = [keras.callbacks.LearningRateScheduler(PiecewiseLinear_Lr_schedule), self.tb_callbacks]
+        call_backs_list = [keras.callbacks.LearningRateScheduler(OneCycleLrScheduler), self.tb_callbacks]
 
         #train model
         self.model_history = self.kmodel.fit(self.train_dataset,
