@@ -325,30 +325,31 @@ class ConvertData2Hdf5():
 
             # for training data
             file_name = 0
-            for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
-                file_name += 1
-                label = label[0] # since each label is a list instead of int
-                assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
-                assert type(label) == np.uint8, "Img array label is not an integer"
-                if not self.augment_bool:
-                    images_earray.append(img_arr[None])
-                    labels_erray.append(np.array(label).reshape(-1, 1))
-                else:
-                    aug_images, aug_labels = self.apply_data_augmentations(img_arr, label)
-                    num_augs = 0
-                    for aug_image, aug_label in zip(aug_images, aug_labels):
-                        num_augs += 1
-                        aug_np_image = aug_image.numpy()
-                        images_earray.append(aug_np_image[None])
-                        labels_erray.append(np.array(aug_label).reshape(-1, 1))
-                        # save aug images
-                        if self.save_augmentation_flag:
-                            pil_img = Image.fromarray(aug_np_image.astype('uint8'))
-                            dest = train_aug_dir / f'{label}/{file_name}_{num_augs}.jpg'
-                            self.logger.debug(f'Saving augmented image: {dest.as_posix()}')
-                            pil_img.save(dest.as_posix())
+            if not self.hdf5_save_file.exists(): ### remove
+                for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
+                    file_name += 1
+                    label = label[0] # since each label is a list instead of int
+                    assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
+                    assert type(label) == np.uint8, "Img array label is not an integer"
+                    if not self.augment_bool:
+                        images_earray.append(img_arr[None])
+                        labels_erray.append(np.array(label).reshape(-1, 1))
+                    else:
+                        aug_images, aug_labels = self.apply_data_augmentations(img_arr, label)
+                        num_augs = 0
+                        for aug_image, aug_label in zip(aug_images, aug_labels):
+                            num_augs += 1
+                            aug_np_image = aug_image.numpy()
+                            images_earray.append(aug_np_image[None])
+                            labels_erray.append(np.array(aug_label).reshape(-1, 1))
+                            # save aug images
+                            if self.save_augmentation_flag:
+                                pil_img = Image.fromarray(aug_np_image.astype('uint8'))
+                                dest = train_aug_dir / f'{label}/{file_name}_{num_augs}.jpg'
+                                self.logger.debug(f'Saving augmented image: {dest.as_posix()}')
+                                pil_img.save(dest.as_posix())
 
-            hdf5_save_file_obj.close()
+                hdf5_save_file_obj.close()
 
         elif self.data_format == "images":
             classes = [class_path.name for class_path in sorted(list(directory.glob('*')))]
