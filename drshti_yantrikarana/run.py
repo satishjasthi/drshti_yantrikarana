@@ -175,7 +175,7 @@ def main():
                                                           batch_size=512,
                                                           resizeHeight=32,
                                                           resizeWidth=32,
-                                                          augment_bool=False,
+                                                          augment_bool=True,
                                                           augmentations_list=['random_rotate', 'horizonatal_flip'],
                                                           save_augmentation_flag=True)
     cntr.train_model(model_name='custom',
@@ -183,8 +183,8 @@ def main():
                      test_dataset=test_dataset,
                      batch_size=512,
                      loss=keras.losses.categorical_crossentropy,
-                     epochs=20,
-                     optimizer=keras.optimizers.sgd(lr=0.08))
+                     epochs=24,
+                     optimizer=keras.optimizers.sgd(lr=0, momentum=0.9, decay=5e-4*512, nesterov=True))
 
 if __name__ == "__main__":
     main()
