@@ -9,9 +9,42 @@ Author: @NJ2020
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import tensorflow as tf
 from PIL import Image
 import numpy as np
 
+def OneCycleLrScheduler(current_epoch, ):
+    total_epochs = 24
+    print(f"!!Total Epochs used in LR schedule is {total_epochs}")
+    max_lr, transition_epoch = 0.8, 7
+    print(f"!!Using transition epoch of {transition_epoch} in LR schedule")
+    print(f"!!Using max_lr of {max_lr} in LR schedule")
+    max_lr = max_lr
+    min_lr = max_lr/transition_epoch
+
+    # annealing lr get from tf log graph and change an_start_lr
+    an_start_lr = 0.08
+    an_end_lr = 0.001
+
+    an_start_epochs = 24
+    an_end_epochs = total_epochs
+
+    # global transition_epoch
+    if current_epoch <= transition_epoch:
+        m = (max_lr - min_lr) / (transition_epoch - 0)
+        new_lr = m * current_epoch + min_lr
+
+    elif current_epoch < an_start_epochs:
+        m = (max_lr - an_start_lr) / (transition_epoch - an_start_epochs)
+        new_x = (current_epoch - an_start_epochs)
+        new_lr = m * new_x + an_start_lr
+    else:
+        m = (an_end_lr - an_start_lr) / (an_end_epochs - an_start_epochs)
+        new_x = (current_epoch - an_end_epochs)
+        new_lr = m * new_x + an_end_lr
+
+    tf.summary.scalar('learning rate', data=new_lr, step=current_epoch)
+    return new_lr
 
 def save_few_images_to_dir(imagesarray=None, labelsarray=None, class_names_list=None, save_dir=None):
     # imagesarray is train_features
@@ -53,11 +86,12 @@ def save_few_images_to_dir(imagesarray=None, labelsarray=None, class_names_list=
 
 
 if __name__ == '__main__':
-    import tempCIFAR
-
-    # Load the raw CIFAR-10 data
-    cifar10_dir = 'D:/PyCharmProjects/cifar10-fast/data/cifar-10-batches-py'
-    X_train, y_train, X_test, y_test = tempCIFAR.load_CIFAR10(cifar10_dir)
-
-    save_dir = Path('C:/Users/neere/Desktop/deleteme/temp')
-    save_few_images_to_dir(imagesarray=X_train, labelsarray=y_train, class_names_list=None, save_dir=save_dir)
+    pass
+    # import tempCIFAR
+    #
+    # # Load the raw CIFAR-10 data
+    # cifar10_dir = 'D:/PyCharmProjects/cifar10-fast/data/cifar-10-batches-py'
+    # X_train, y_train, X_test, y_test = tempCIFAR.load_CIFAR10(cifar10_dir)
+    #
+    # save_dir = Path('C:/Users/neere/Desktop/deleteme/temp')
+    # save_few_images_to_dir(imagesarray=X_train, labelsarray=y_train, class_names_list=None, save_dir=save_dir)

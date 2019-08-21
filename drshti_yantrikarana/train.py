@@ -6,12 +6,16 @@ About: Class to train a model
 
 Author: Satish Jasthi
 """
+import datetime
 from multiprocessing import cpu_count
 
 
 import tensorflow as tf
 from tensorflow.python import keras
 import matplotlib.pyplot as plt
+
+from utils import OneCycleLrScheduler
+
 
 class ModelTraining(object):
 
@@ -28,7 +32,6 @@ class ModelTraining(object):
                  batch_size:int=None,
                  optimizer:keras.optimizers=None,
                  metrics:list=None,
-                 callbacks_list:list=None,
                  name:str=None
                  ):
         self.kmodel = kmodel
@@ -37,16 +40,19 @@ class ModelTraining(object):
         self.batch_size = batch_size
         self.optimizer = optimizer
         self.metrics = metrics
-        self.callbacks_list = callbacks_list
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
         self.name = name
+        self.tflogdir = "logs/scalars" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        file_writer = tf.summary.create_file_writer(self.tflogdir + '/metrics')
+        file_writer.set_as_default()
 
     def compileModel(self):
         self.kmodel.compile(loss=self.loss,
                             optimizer=self.optimizer,
                             metrics=self.metrics
                             )
+        self.tb_callbacks = keras.callbacks.TensorBoard(log_dir=self.tflogdir)
 
     def save_accuracyLoss_plots(self):
         """
@@ -77,13 +83,13 @@ class ModelTraining(object):
         Method to train model
         :return:
         """
-        # compile model
-        self.compileModel()
+        # callbacks
+        call_backs_list = [keras.callbacks.LearningRateScheduler(OneCycleLrScheduler), self.tb_callbacks]
 
         #train model
         self.model_history = self.kmodel.fit(self.train_dataset,
                                              epochs=self.epochs,
-                                             callbacks=self.callbacks_list,
+                                             callbacks=call_backs_list,
                                              # validation_data=self.test_dataset,
                                              workers=cpu_count()-3
                                              )

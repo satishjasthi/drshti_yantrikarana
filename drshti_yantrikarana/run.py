@@ -143,12 +143,12 @@ class DrshtiYantrikarana(object):
                                      batch_size = batch_size,
                                      optimizer = optimizer,
                                      metrics = metrics,
-                                     callbacks_list = callbacks_list,
                                      train_dataset = train_dataset,
                                      test_dataset = test_dataset,
                                      name = name)
 
         # compile and train model
+        modelTrainer.compileModel()
         modelTrainer.trainModel()
 
         return modelTrainer
@@ -159,7 +159,8 @@ class DrshtiYantrikarana(object):
     
 
 def main():
-    cntr = DrshtiYantrikarana(raw_data=Path(r'C:\Users\neere\Desktop\deleteme\raw_dir'), num_classes=10)
+    # cntr = DrshtiYantrikarana(raw_data=Path(r'C:\Users\neere\Desktop\deleteme\raw_dir'), num_classes=10)
+    cntr = DrshtiYantrikarana(raw_data=Path('./'), num_classes=10)
     (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
     # x_train  = x_train[0:100, :, :, :]
     # y_train = y_train[0:100,:]
@@ -171,7 +172,7 @@ def main():
                                                           x_test=x_test,
                                                           y_train=y_train,
                                                           y_test=y_test,
-                                                          batch_size=128,
+                                                          batch_size=512,
                                                           resizeHeight=32,
                                                           resizeWidth=32,
                                                           augment_bool=False,
