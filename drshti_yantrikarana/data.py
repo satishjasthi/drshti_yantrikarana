@@ -20,10 +20,23 @@ from PIL import Image
 from tensorflow.python import keras
 
 from moduleLogger import DyLogger
-
+import time
 logger = DyLogger(logging_level=logging.DEBUG)
 # logger.get_logger(__name__)
 
+def timeme(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print ('%r  %2.2f ms' % \
+                  (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
 
 class TFRecords(object):
     """
@@ -105,6 +118,7 @@ class TFRecords(object):
         }
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
+    @timeme
     def writeTfRecord(self):
         """
         Method to create TFRecord for data set
@@ -134,19 +148,20 @@ class TFRecords(object):
         if self.mode == 'train':
             with tf.compat.v1.python_io.TFRecordWriter(self.TrainTfRecord_data.as_posix()) as writer:
                 for image_arr, label in zip(image_gen, label_names):
-                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[np.argmax(label)])
+                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[label])
                     writer.write(tf_example.SerializeToString())
 
             hdf5_data_arrays.close()
         elif self.mode == 'test':
             with tf.compat.v1.python_io.TFRecordWriter(self.TestTfRecord_data.as_posix()) as writer:
                 for image_arr, label in zip(image_gen, label_names):
-                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[np.argmax(label)])
+                    tf_example = self.convert2FeatureMessage(image_arr, label_index_map[label])
                     writer.write(tf_example.SerializeToString())
 
             hdf5_data_arrays.close()
 
     # @staticmethod
+    @timeme
     def _parse_image_function(self,example_proto):
         # Create a dictionary describing the features.
         image_feature_description = {
@@ -165,6 +180,7 @@ class TFRecords(object):
         label_one_hot = tf.one_hot(parsed_dataset['label'], depth=self.num_classes)
         return image, label_one_hot
 
+    @timeme
     def readTfRecord(self):
         """
         Method to read tf record format image data
@@ -183,6 +199,7 @@ class TFRecords(object):
 
         return parsed_dataset
 
+@timeme
 def preprocessTfDataset(image_label_instance):
     image = tf.image.decode_image(image_label_instance['image_raw'], dtype=tf.float64)
     label = image_label_instance['label']
@@ -191,9 +208,11 @@ def preprocessTfDataset(image_label_instance):
     image = image/ 255.0
 
     # standardize
-    mu_tensor, std_tensor = tf.convert_to_tensor([1,1,1]), tf.convert_to_tensor([0.1,0.1,.01])
+    mu_tensor, std_tensor = tf.convert_to_tensor([0.4914, 0.4822, 0.4465]), tf.convert_to_tensor([0.2470, 0.2435, 0.2616])
     image = (image - tf.cast(mu_tensor, dtype=tf.float64))/ tf.cast(std_tensor,dtype=tf.float64)
     return image, label
+
+
 class ConvertData2Hdf5():
     """
     Class to convert images to hdf5 file system by saving images and labels as ndarrays
@@ -247,6 +266,7 @@ class ConvertData2Hdf5():
                                       'horizonatal_flip': random_flip,
                                       }
 
+    @timeme
     def apply_data_augmentations(self, image:np.array, label:int)->tuple:
         """
         Apply list of augmentations on given image
@@ -261,6 +281,7 @@ class ConvertData2Hdf5():
         return aug_images, aug_labels
 
 
+    @timeme
     def createHdf5File(self, directory):
         """
 
@@ -396,12 +417,14 @@ class ConvertData2Hdf5():
 
             hdf5_save_file_obj.close()
 
+    @timeme
     def createTrainTestHdf5Files(self):
         self.createHdf5File(directory=self.train_dir)
         self.createHdf5File(directory=self.test_dir)
 
 
 # preprocessing methods
+@timeme
 def resize_image(img_tensor: tf.convert_to_tensor, resize_shape:tuple) -> tf.image:
     """
     Function to read an image, convert it into a square image and
@@ -459,6 +482,7 @@ def cutout(x: tf.Tensor, h: int, w: int, c: int = 3) -> tf.Tensor:
     x = replace_slice(x, tf.zeros([h, w, c]), [x0, y0, 0])
     return x
 
+@timeme
 def random_flip(x: tf.Tensor, flip_vert: bool = False) -> tf.Tensor:
     """
     Randomly flip the input image horizontally, and optionally also vertically, which is implemented as 90-degree
@@ -472,7 +496,7 @@ def random_flip(x: tf.Tensor, flip_vert: bool = False) -> tf.Tensor:
         x = random_rotate_90(x)
     return x
 
-
+@timeme
 def random_rotate_90(x: tf.Tensor) -> tf.Tensor:
     """
     Randomly rotate the input image by either 0, 90, 180 or 270 degrees.
