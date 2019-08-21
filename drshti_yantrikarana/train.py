@@ -87,3 +87,4 @@ class ModelTraining(object):
                                              validation_data=self.test_dataset,
                                              workers=cpu_count()-3
                                              )
+

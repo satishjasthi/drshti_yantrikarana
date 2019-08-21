@@ -17,11 +17,13 @@ import tensorflow as tf
 
 # Data ingestion........................................................................................................
 from PIL import Image
+from tensorflow.python import keras
 
 from moduleLogger import DyLogger
 
 logger = DyLogger(logging_level=logging.DEBUG)
 # logger.get_logger(__name__)
+
 
 class TFRecords(object):
     """
@@ -43,10 +45,12 @@ class TFRecords(object):
         self.TrainTfRecord_data = TrainTfRecord_data
         self.TestTfRecord_data = TestTfRecord_data
 
-        self.logger.debug(f'Reading TrainHdf5_data from :{self.TrainHdf5_data.as_posix()}')
-        self.logger.debug(f'Reading TestHdf5_data from :{self.TestHdf5_data.as_posix()}')
-        self.logger.debug(f'Saving TrainTfRecord_data from :{self.TrainTfRecord_data.as_posix()}')
-        self.logger.debug(f'Saving TestTfRecord_data from :{self.TestTfRecord_data.as_posix()}')
+        if self.mode == 'train':
+            self.logger.debug(f'Reading TrainHdf5_data from :{self.TrainHdf5_data.as_posix()}')
+            self.logger.debug(f'Saving TrainTfRecord_data from :{self.TrainTfRecord_data.as_posix()}')
+        if self.mode == 'test':
+            self.logger.debug(f'Reading TestHdf5_data from :{self.TestHdf5_data.as_posix()}')
+            self.logger.debug(f'Saving TestTfRecord_data from :{self.TestTfRecord_data.as_posix()}')
 
 
         self.logger.debug(f'Creating TF records for {self.mode} data')
@@ -222,6 +226,7 @@ class ConvertData2Hdf5():
         self.train_dir = self.data_dir/'train'
         self.test_dir = self.data_dir / 'test'
         self.hdf5_save_dir = hdf5_save_dir
+        self.hdf5_save_dir.mkdir(parents=True, exist_ok=True)
         self.resizeHeight = resizeHeight
         self.resizeWidth = resizeWidth
         self.augment_bool = augment_bool
@@ -290,9 +295,10 @@ class ConvertData2Hdf5():
             file_name = 0
             for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
                 file_name += 1
+                label = label[0] # since each label is a list instead of int
+                assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
+                assert type(label) == np.uint8, "Img array label is not an integer"
                 if not self.augment_bool:
-                    assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
-                    assert type(label) is int, "Img array label is not an integer"
                     images_earray.append(img_arr.reshape(self.resizeHeight, self.resizeWidth, 3))
                     labels_erray.append(label)
                 else:
@@ -310,6 +316,7 @@ class ConvertData2Hdf5():
                             self.logger.debug(f'Saving augmented image: {dest.as_posix()}')
                             pil_img.save(dest.as_posix())
 
+            hdf5_save_file_obj.close()
 
         elif self.data_format == "images":
             classes = [class_path.name for class_path in sorted(list(directory.glob('*')))]
@@ -449,7 +456,6 @@ def random_flip(x: tf.Tensor, flip_vert: bool = False) -> tf.Tensor:
     :param flip_vert: Whether to perform vertical flipping. Default: False.
     :return: Transformed image.
     """
-    logger.debug('Applying random flip')
     x = tf.image.random_flip_left_right(x)
     if flip_vert:
         x = random_rotate_90(x)
@@ -462,7 +468,6 @@ def random_rotate_90(x: tf.Tensor) -> tf.Tensor:
     :param x: Input image.
     :return: Transformed image.
     """
-    logger.debug('Applying random rotate 90')
     return tf.image.rot90(x, tf.random.uniform(shape=[], minval=10, maxval=15, dtype=tf.int32))
 
 def deg2rad(x: tf.Tensor) -> tf.Tensor:
@@ -609,14 +614,21 @@ def apply_affine_mat(x: tf.Tensor, mat: tf.Tensor, do_reflect: bool = False) -> 
     return x
 
 if __name__ == "__main__":
-    o = ConvertData2Hdf5(data_dir=Path(r"C:\Users\neere\Desktop\deleteme\traintestSplit"),
-                           hdf5_save_dir=Path(r"C:\Users\neere\Desktop\deleteme\HDF5Files"),
-                           resizeHeight=90,
-                           resizeWidth=90,
-                           augment_bool=True,
-                           augmentations_list=['random_rotate',
-                                               'horizonatal_flip'
-                                               ],
-                           save_augmentation_flag=True
-                           )
-    o.createTrainTestHdf5Files()
+    # (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+    # o = ConvertData2Hdf5(data_dir=Path("/Users/satishjasthi/Downloads/raw_data/"),
+    #                      hdf5_save_dir=Path("/Users/satishjasthi/Downloads/raw_data/HDF5"),
+    #                      x_train_arr=x_train,
+    #                      y_train_arr=y_train,
+    #                      x_test_arr=x_test,
+    #                      y_test_arr=y_test,
+    #                      data_format="np_array",
+    #                      resizeHeight=32,
+    #                      resizeWidth=32,
+    #                      augment_bool=True,
+    #                      augmentations_list=['random_rotate', 'horizonatal_flip'],
+    #                      save_augmentation_flag=True,
+    #                                )
+    # o.createTrainTestHdf5Files()
+    o = TFRecords(mode='train', TrainHdf5_data=Path("/Users/satishjasthi/Downloads/raw_data/HDF5/train.h5"),
+                  TrainTfRecord_data=Path("/Users/satishjasthi/Downloads/raw_data/TFRecords/train"))
+    o.writeTfRecord()

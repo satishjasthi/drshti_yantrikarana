@@ -12,9 +12,13 @@ import numpy as np
 from pathlib import Path
 
 import tensorflow as tf
+from tensorflow.python import keras
 
 from data import ConvertData2Hdf5, TFRecords, preprocessTfDataset
+from models import custom
 from moduleLogger import DyLogger
+from test import EvaluateModel
+from train import ModelTraining
 
 logger = DyLogger(logging_level=logging.DEBUG)
 
@@ -36,6 +40,7 @@ class DrshtiYantrikarana(object):
         self.TestHdf5_data = self.hdf5_save_dir / 'test.h5'
 
         self.tfrecords_save_dir = self.raw_data / 'TFRecords'
+        self.tfrecords_save_dir.mkdir(exist_ok=True, parents=True)
         self.TrainTfRecord_data = self.tfrecords_save_dir/'train'
         self.TestTfRecord_data = self.tfrecords_save_dir / 'test'
 
@@ -51,7 +56,7 @@ class DrshtiYantrikarana(object):
                          augmentations_list: list = None,
                          save_augmentation_flag: bool = None,
                          batch_size = None,
-                         ):
+                         )->tuple:
         self.logger.info(
             'Preparing data for model training..........................................................................')
 
@@ -80,21 +85,97 @@ class DrshtiYantrikarana(object):
         self.logger.info(
             'Converting hdf5 data to TFRecords..........................................................................')
 
-        self.tfRecordCreator = TFRecords(mode='train',
+        self.tfRecordCreator_train = TFRecords(mode='train',
                                          TrainHdf5_data=self.TrainHdf5_data,
                                          TestHdf5_data=self.TestHdf5_data,
                                          TrainTfRecord_data=self.TrainTfRecord_data,
                                          TestTfRecord_data=self.TrainTfRecord_data)
-        self.tfRecordCreator.writeTfRecord()
-        self.dataset = self.tfRecordCreator.readTfRecord()
+        self.tfRecordCreator_test = TFRecords(mode='test',
+                                               TrainHdf5_data=self.TrainHdf5_data,
+                                               TestHdf5_data=self.TestHdf5_data,
+                                               TrainTfRecord_data=self.TrainTfRecord_data,
+                                               TestTfRecord_data=self.TrainTfRecord_data)
+        self.tfRecordCreator_train.writeTfRecord()
+        self.tfRecordCreator_test.writeTfRecord()
+        train_dataset = self.tfRecordCreator_train.readTfRecord()
+        test_dataset = self.tfRecordCreator_test.readTfRecord()
 
         # define batch size and apply prefetch
-        self.dataset = self.dataset.shuffle(buffer_size=batch_size*2)
-        self.dataset = self.dataset.map(map_func=preprocessTfDataset)
-        self.dataset = self.dataset.batch(batch_size=batch_size)
-        self.dataset = self.dataset.prefetch(buffer_size=batch_size*2)
+        train_dataset = train_dataset.shuffle(buffer_size=batch_size*2)
+        # train_dataset = train_dataset.map(map_func=preprocessTfDataset)
+        train_dataset = train_dataset.batch(batch_size=batch_size)
+        train_dataset = train_dataset.prefetch(buffer_size=batch_size*2)
 
-        # create tf dataset from tf records
+        test_dataset = test_dataset.shuffle(buffer_size=batch_size * 2)
+        # test_dataset = test_dataset.map(map_func=preprocessTfDataset)
+        test_dataset = test_dataset.batch(batch_size=batch_size)
+        test_dataset = test_dataset.prefetch(buffer_size=batch_size * 2)
+        return train_dataset, test_dataset
 
-o = DrshtiYantrikarana(modelName='ResNet', raw_data=Path(r"C:\Users\neere\Desktop\deleteme\raw_dir"))
-o.prepareModelData(data_format="images",resizeWidth=90, resizeHeight=90, augment_bool=True,  save_augmentation_flag=True, augmentations_list=['random_rotate', 'horizonatal_flip' ], batch_size=1)
+    def train_model(self,
+                    model_name: str,
+                    train_dataset:tf.data.Dataset,
+                    test_dataset:tf.data.Dataset,
+                    loss:keras.losses,
+                    epochs:int,
+                    batch_size:int,
+                    optimizer:keras.optimizers,
+                    metrics:list=['accuracy'],
+                    )->ModelTraining:
+
+        # define network in keras
+        network = custom()
+        kmodel = network.get_model()
+
+        # define callbacks
+        callbacks_list = []
+        name = 'custom'
+
+        # define model trainer train
+        modelTrainer = ModelTraining(kmodel = kmodel,
+                                     loss = loss,
+                                     epochs = epochs,
+                                     batch_size = batch_size,
+                                     optimizer = optimizer,
+                                     metrics = metrics,
+                                     callbacks_list = callbacks_list,
+                                     train_dataset = train_dataset,
+                                     test_dataset = test_dataset,
+                                     name = name)
+
+        # compile and train model
+        modelTrainer.trainModel()
+
+        return modelTrainer
+
+    def evaluate_model(self, modelTrainer:ModelTraining, x_test:np.array):
+        model_evaluator = EvaluateModel()
+        pass
+    
+
+def main():
+    cntr = DrshtiYantrikarana(raw_data=Path('/Users/satishjasthi/Downloads/raw_data/'))
+    (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+    train_dataset, test_dataset = cntr.prepareModelData(data_format="np_array",
+                                                          x_train=x_train,
+                                                          x_test=x_test,
+                                                          y_train=y_train,
+                                                          y_test=y_test,
+                                                          batch_size=10,
+                                                          resizeHeight=32,
+                                                          resizeWidth=32,
+                                                          augment_bool=True,
+                                                          augmentations_list=['random_rotate', 'horizonatal_flip'],
+                                                          save_augmentation_flag=True)
+    cntr.train_model(model_name='custom',
+                     train_dataset=train_dataset,
+                     test_dataset=test_dataset,
+                     batch_size=10,
+                     loss=keras.losses.categorical_crossentropy,
+                     epochs=3,
+                     optimizer=keras.optimizers.sgd())
+
+if __name__ == "__main__":
+    main()
+    # o = DrshtiYantrikarana(modelName='ResNet', raw_data=Path(r"/Users/satishjasthi/Downloads/deleteme/raw_dir"))
+    # o.prepareModelData(data_format="images",resizeWidth=90, resizeHeight=90, augment_bool=True,  save_augmentation_flag=True, augmentations_list=['random_rotate', 'horizonatal_flip' ], batch_size=1)
