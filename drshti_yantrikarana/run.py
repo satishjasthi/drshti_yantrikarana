@@ -93,13 +93,13 @@ class DrshtiYantrikarana(object):
                                                TrainHdf5_data=self.TrainHdf5_data,
                                                TestHdf5_data=self.TestHdf5_data,
                                                TrainTfRecord_data=self.TrainTfRecord_data,
-                                               TestTfRecord_data=self.TrainTfRecord_data)
+                                               TestTfRecord_data=self.TestTfRecord_data)
         self.tfRecordCreator_test = TFRecords(mode='test',
                                                num_classes=self.num_classes,
                                                TrainHdf5_data=self.TrainHdf5_data,
                                                TestHdf5_data=self.TestHdf5_data,
                                                TrainTfRecord_data=self.TrainTfRecord_data,
-                                               TestTfRecord_data=self.TrainTfRecord_data)
+                                               TestTfRecord_data=self.TestTfRecord_data)
         self.tfRecordCreator_train.writeTfRecord()
         self.tfRecordCreator_test.writeTfRecord()
         train_dataset = self.tfRecordCreator_train.readTfRecord()
@@ -175,7 +175,7 @@ def main():
                                                           batch_size=512,
                                                           resizeHeight=32,
                                                           resizeWidth=32,
-                                                          augment_bool=True,
+                                                          augment_bool=False,
                                                           augmentations_list=['random_rotate', 'horizonatal_flip'],
                                                           save_augmentation_flag=False)
     cntr.train_model(model_name='custom',

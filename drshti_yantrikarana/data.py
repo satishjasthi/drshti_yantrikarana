@@ -302,7 +302,13 @@ class ConvertData2Hdf5():
 
         logger.debug(f'Raw data is in {self.data_format} format.................................................')
         if self.data_format == 'np_array':
-            classes = np.unique(self.y_train_arr)
+
+            if directory.name == 'train':
+                features, labels = self.x_train_arr, self.y_train_arr
+            elif directory.name == 'test':
+                features, labels = self.x_test_arr, self.y_test_arr
+
+            classes = np.unique(labels)
             logger.debug(f'Unique classes identified: {classes}')
 
             if self.save_augmentation_flag:
@@ -324,9 +330,9 @@ class ConvertData2Hdf5():
             # for training data
             file_name = 0
 
-            for img_arr, label in zip(self.x_train_arr, self.y_train_arr):
+            for img_arr, label in zip(features, labels):
                 file_name += 1
-                label = label[0] # since each label is a list instead of int
+                label = label[0].astype(np.uint8) # since each label is a list instead of int
                 assert len(img_arr.shape) == 3, "Img array from numpy array has more than 3 dim"
                 assert type(label) == np.uint8, "Img array label is not an integer"
                 if not self.augment_bool:
