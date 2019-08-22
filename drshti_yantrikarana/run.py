@@ -20,6 +20,7 @@ from moduleLogger import DyLogger
 from test import EvaluateModel
 from train import ModelTraining
 
+tf.logging.set_verbosity(tf.logging.DEBUG)
 logger = DyLogger(logging_level=logging.DEBUG)
 
 class DrshtiYantrikarana(object):
@@ -188,5 +189,20 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    # TODO Data
+        # TODO create raw data backup
+        # TODO Class specific DA
+
+    # TODO Create metrics model by adding
+        #  Gradcam
+        #  miss classified images
+        #  Image gallery of raw and aug images
+        #  Image gallery of missclassified images
+        # TODO Funciton to find MaxLr
+        # TODO Function to select LR strategy
+        # TODO Add timer
+        # TODO Add Central logger
+
     # o = DrshtiYantrikarana(modelName='ResNet', raw_data=Path(r"/Users/satishjasthi/Downloads/deleteme/raw_dir"))
     # o.prepareModelData(data_format="images",resizeWidth=90, resizeHeight=90, augment_bool=True,  save_augmentation_flag=True, augmentations_list=['random_rotate', 'horizonatal_flip' ], batch_size=1)
