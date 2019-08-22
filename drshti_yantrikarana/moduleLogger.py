@@ -8,8 +8,15 @@ Author: Satish Jasthi
 """
 
 import logging
+import os
 import logging.handlers
 from pathlib import Path
+
+# disable tf logging
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # FATAL
+logging.getLogger('tensorflow').setLevel(logging.FATAL)
+
+
 
 
 class DyLogger():
@@ -31,13 +38,10 @@ class DyLogger():
                                            format = self.LOG_FORMAT,
                                            filemode='w'
                                            )
+        self.logger = logging.getLogger(logger_name)
+        self.logger.setLevel(level=self.LOGGING_LEVEL)
         # Add the log message handler to the logger to create new log file once file size exceeds 10 mb
         self.handler = logging.handlers.RotatingFileHandler(self.LOG_FILE,
                                                        maxBytes=10**7,
                                                        backupCount=5)
-
-        # logging.addHandler(handler)
-
-    def get_logger(self, name):
-        logging.getLogger(name).addHandler(self.handler)
-        return logging.getLogger(name)
+        self.logger.addHandler(self.handler)

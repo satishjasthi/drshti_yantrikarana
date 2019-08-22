@@ -20,8 +20,8 @@ from moduleLogger import DyLogger
 from test import EvaluateModel
 from train import ModelTraining
 
-tf.logging.set_verbosity(tf.logging.DEBUG)
-logger = DyLogger(logging_level=logging.DEBUG)
+
+logger = DyLogger(logging_level=logging.DEBUG).logger
 
 class DrshtiYantrikarana(object):
 
@@ -34,7 +34,6 @@ class DrshtiYantrikarana(object):
                  ):
         self.modelName = modelName
         self.num_classes = num_classes
-        self.logger = logger.get_logger(__name__)
         self.raw_data = raw_data
         self.trainTestSplitDir = self.raw_data / 'TrainTestSplitData'
 
@@ -60,13 +59,13 @@ class DrshtiYantrikarana(object):
                          save_augmentation_flag: bool = None,
                          batch_size = None,
                          )->tuple:
-        self.logger.info(
-            'Preparing data for model training..........................................................................')
+        logger.info(
+            f'Preparing data for model training..........................................................................')
 
         # read raw data and create hdf5 files
-        self.logger.debug(
+        logger.debug(
             f'Raw data is in {data_format} format.................................................')
-        self.logger.info(
+        logger.info(
             'Converting raw data to hdf5 files.....................................................')
         self.hdf5DataCreator = ConvertData2Hdf5(data_dir=self.trainTestSplitDir,
                                                 num_classes=self.num_classes,
@@ -82,11 +81,11 @@ class DrshtiYantrikarana(object):
                                                 augmentations_list=augmentations_list,
                                                 save_augmentation_flag=save_augmentation_flag)
         self.hdf5DataCreator.createTrainTestHdf5Files()
-        self.logger.debug(
+        logger.debug(
             'Finished converting raw data to hdf5 files.....................................................')
 
         # create tfrecords from hdf5 files
-        self.logger.info(
+        logger.info(
             'Converting hdf5 data to TFRecords..........................................................................')
 
         self.tfRecordCreator_train = TFRecords(mode='train',
@@ -178,7 +177,7 @@ def main():
                                                           resizeWidth=32,
                                                           augment_bool=True,
                                                           augmentations_list=['random_rotate', 'horizonatal_flip'],
-                                                          save_augmentation_flag=True)
+                                                          save_augmentation_flag=False)
     cntr.train_model(model_name='custom',
                      train_dataset=train_dataset,
                      test_dataset=test_dataset,
