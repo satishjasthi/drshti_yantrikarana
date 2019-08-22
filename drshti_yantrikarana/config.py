@@ -1,85 +1,59 @@
 """
-About: Configuration file for whole project
+Script to create a mode config dictionary which provides access to all changeable
+parameters of model training pipe line
 
-Author: Satish Jasthi
+author: Satish Jasthi
+------
 """
-
-# database configs
-import logging
 from pathlib import Path
 
-db_username = 'root'
-db_password = 'password'
-db_name = 'drshit_yantrikarana'
+from tensorflow.python import keras
 
-#logger#################################################################################################################
-LOGGER_LEVEL = logging.DEBUG
+# get predefined numpy array based data here
+(x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
 
-# data configs##########################################################################################################
-external_data_dir = "/Volumes/SatishJ/ML/Datasets/FruitsMini"
-data_dir = Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/data')
-TrainHdf5_data = data_dir.joinpath(data_dir.parent, 'HDF5_data_files/TrainData.h5')
-TrainTfRecord_data = data_dir.joinpath(data_dir.parent, 'TFRecords_data_files/TrainData.tfrecords')
-TestHdf5_data = data_dir.joinpath(data_dir.parent, 'HDF5_data_files/TestData.h5')
-TestTfRecord_data = data_dir.joinpath(data_dir.parent, 'TFRecords_data_files/TestData.tfrecords')
-OfflineDataAugImages = data_dir.joinpath(data_dir.parent, 'HDF5_data_files/AugmentedImageData.h5')
-OfflineDataAugLabels = data_dir.joinpath(data_dir.parent, 'HDF5_data_files/AugmentedLabelData.h5')
+data_root_dir = Path('Data')
+data_root_dir.mkdir(parents=True, exist_ok=True)
 
-# data preprocessing####################################################################################################
-resize_shape = (32,32)
-num_classes = 10
-# mu and sigma must be tf.float64
-# TODO add code to calculate data_mu and data_sigma
-data_mu = ''
-data_sigma = ''
-channel_depth = 3
-batch_size = 2
+data_aug_dir = Path('AugmentedData')
+data_aug_dir.mkdir(parents=True, exist_ok=True)
 
-# data augmentation#####################################################################################################
-# for random rotation
-rotation_min = 10
-rotation_max = 45
+HDF5_data_dir = Path('HDF5Data')
+HDF5_data_dir.mkdir(parents=True, exist_ok=True)
 
-# model training########################################################################################################
-model_optimizer='sgd'
-model_loss='categorical_crossentropy'
-model_metrics=['accuracy']
-model_steps_per_epoch=None
-model_epochs=100
-train_verbose=1
-train_callbacks=None
-train_validation_steps=None
-train_validation_freq=1
-train_class_weight=None
-train_max_queue_size=10
-train_workers=1
-train_use_multiprocessing=False
-train_shuffle=True
-train_initial_epoch=0
+model_config = {'name':'DavidNet',
+                'dataSetName':'cifar10',
+                'numClasses':10,
 
-# datagen
-datagen_featurewise_center=False,
-datagen_samplewise_center=False,
-datagen_featurewise_std_normalization=False,
-datagen_samplewise_std_normalization=False,
-datagen_zca_whitening=False,
-datagen_zca_epsilon=1e-06,
-datagen_rotation_range=0,
-datagen_width_shift_range=0.0,
-datagen_height_shift_range=0.0,
-datagen_brightness_range=None,
-datagen_shear_range=0.0,
-datagen_zoom_range=0.0,
-datagen_channel_shift_range=0.0,
-datagen_fill_mode='nearest',
-datagen_cval=0.0,
-datagen_horizontal_flip=False,
-datagen_vertical_flip=False,
-datagen_rescale=None,
-datagen_preprocessing_function=None,
-datagen_data_format=None,
-datagen_validation_split=0.0,
-datagen_datagen_dtype=None
 
-datagen_SHUFFLE_BUFFER=128
-datagen_BATCH_SIZE=128
+                'dataFormat':'numpy', # can be 'numpy' or 'image'
+                'dataSource':((x_train, y_train), (x_test, y_test)), # will be tuple if numpy data
+                # else Path object to the dir with train and test dir
+
+                'img_height':32,
+                'img_width':32,
+                'img_depth':3,
+
+
+                'train_data_dir':data_root_dir/'train',
+                'test_data_dir':data_root_dir/'test',
+
+
+                'augment_data_switch':False, # bool to turn on or off data augmentation
+                'train_data_aug':data_aug_dir,
+
+
+                'hdf5_train_data':HDF5_data_dir/'train.h5',
+                'hdf5_test_data':HDF5_data_dir/'test.h5',
+
+                'loss': keras.losses.categorical_crossentropy,
+                'optimizer':keras.optimizers.SGD(lr=0,
+                                                 momentum=0.9,
+                                                 decay=5e-4*512),
+                'batchSize':512,
+                'epochs':24,
+                'transition_epoch':5,
+                'maxLr':0.8,
+                'minLr':0.08,
+
+                }

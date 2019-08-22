@@ -11,21 +11,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import tables
 from PIL import Image
 import numpy as np
 
-# class PiecewiseLinear(namedtuple('PiecewiseLinear', ('knots', 'vals'))):
-#     def __call__(self, t):
-#         return np.interp([t], self.knots, self.vals)[0]
-#
-# Lr_schedule = PiecewiseLinear([0, 5, 24], [0, 0.4, 0])
-# lr_lambda = lambda epoch : Lr_schedule(epoch/24)/512
-#
-# lrs = []
-# for i in range(1,25):
-#     lrs.append(lr_lambda(i))
-# plt.plot(range(1,25), lrs)
-# plt.show()
+
 
 def OneCycleLrScheduler(current_epoch, ):
     total_epochs = 24
