@@ -192,7 +192,10 @@ class Network(Environment):
                       metrics=self.metrics
                       )
 
-        call_backs_list = [keras.callbacks.LearningRateScheduler(OneCycleLrScheduler)]
+        if self.enable_callbacksBool:
+            call_backs_list = [keras.callbacks.LearningRateScheduler(OneCycleLrScheduler)]
+        else:
+            call_backs_list = list()
 
         # train model
         model_historty = model.fit(train_dataset,
