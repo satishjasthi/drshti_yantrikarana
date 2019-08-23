@@ -7,26 +7,36 @@ author: Satish Jasthi
 """
 from pathlib import Path
 
+import numpy as np
 from tensorflow.python import keras
 
 # get predefined numpy array based data here
+from Utils.dataAugmentations import random_rotate_90, random_flip
+
 (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+x_train, y_train = x_train[:20,:,:,:], y_train[:20]
+x_test, y_test = x_test[:10,:,:,:], y_test[:10]
 
-data_root_dir = Path('Data')
-data_root_dir.mkdir(parents=True, exist_ok=True)
+dataSetName = 'cifar10'
+# dataSetName = 'Fruits'
 
-data_aug_dir = Path('AugmentedData')
+data_root_dir = Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/data/')
+
+data_aug_dir = data_root_dir.parent/'AugmentedData'
 data_aug_dir.mkdir(parents=True, exist_ok=True)
 
-HDF5_data_dir = Path('HDF5Data')
+HDF5_data_dir = data_root_dir.parent/'HDF5Data'
 HDF5_data_dir.mkdir(parents=True, exist_ok=True)
 
+Tfrecords_data_dir = data_root_dir.parent/'Tfrecords'
+Tfrecords_data_dir.mkdir(parents=True, exist_ok=True)
+
 model_config = {'name':'DavidNet',
-                'dataSetName':'cifar10',
+                'dataSetName':dataSetName,
                 'numClasses':10,
 
 
-                'dataFormat':'numpy', # can be 'numpy' or 'image'
+                'dataFormat':"numpy", # can be 'numpy' or 'image'
                 'dataSource':((x_train, y_train), (x_test, y_test)), # will be tuple if numpy data
                 # else Path object to the dir with train and test dir
 
@@ -41,10 +51,16 @@ model_config = {'name':'DavidNet',
 
                 'augment_data_switch':False, # bool to turn on or off data augmentation
                 'train_data_aug':data_aug_dir,
+                'train_data_aug_hdf5': data_aug_dir/f'{dataSetName}_train_augmented.h5',
+                'data_augmentation_functions':[random_rotate_90, random_flip],
+                'data_augmentation_fraction': 0.5,
 
 
-                'hdf5_train_data':HDF5_data_dir/'train.h5',
-                'hdf5_test_data':HDF5_data_dir/'test.h5',
+                'hdf5_train_data':HDF5_data_dir/f'{dataSetName}_train.h5',
+                'hdf5_test_data':HDF5_data_dir/f'{dataSetName}_test.h5',
+
+                'train_tfrecords':Tfrecords_data_dir/f'{dataSetName}_train.tfrecords',
+                'test_tfrecords':Tfrecords_data_dir/f'{dataSetName}_test.tfrecords',
 
                 'loss': keras.losses.categorical_crossentropy,
                 'optimizer':keras.optimizers.SGD(lr=0,
