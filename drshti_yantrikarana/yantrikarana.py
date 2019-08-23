@@ -12,7 +12,7 @@ import numpy as np
 # add current file to sys paths
 import tables
 
-from Utils.dataUtils import Images2HDF5File, map_augmentation, numpy2hdf5, HDF52Tfrecords
+from Utils.dataUtils import Images2HDF5File, map_augmentation, numpy2hdf5, HDF52Tfrecords, Tfrecords2TfDatasets
 
 current_file_abs_path = Path(__file__).resolve()
 sys.path.append(current_file_abs_path.parent.as_posix())
@@ -153,12 +153,14 @@ class Data(Environment):
         """
         train_records = HDF52Tfrecords(self.hdf5_train_data, Tfrecords_save_path=self.train_tfrecords)
         test_records = HDF52Tfrecords(self.hdf5_test_data, Tfrecords_save_path=self.test_tfrecords)
-        return (train_records, test_records)
+        return train_records, test_records
 
     def createTfdatasets(self)->tuple:
-        trianDataset = Tfrecords2TfDatasets(self.)
-
+        trainDataset = Tfrecords2TfDatasets(record=self.train_tfrecords)
+        testDataset = Tfrecords2TfDatasets(record=self.test_tfrecords)
+        return trainDataset, testDataset
 
 if __name__ == "__main__":
     o = Data()
-    o.augment_data(data=Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/HDF5Data/cifar10_test.h5'))
+    # o.augment_data(data=Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/HDF5Data/cifar10_test.h5'))
+    o.createTfdatasets()

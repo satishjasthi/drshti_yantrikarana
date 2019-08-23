@@ -125,3 +125,30 @@ class TestData(TestCase):
             self.assertEqual(len(label.numpy().shape), 1)
             self.assertEqual(label.numpy().shape[-1], data.numClasses)
         self.assertEqual(tf_test_images, test_actual_num_images)
+
+    def test_Tfrecords2TfDatasets(self):
+        data = Data()
+
+        # create train and test datasets
+        trainDataset, testDataset = data.createTfdatasets()
+
+        train_data = tables.open_file(data.hdf5_train_data, mode='r')
+        test_data = tables.open_file(data.hdf5_test_data, mode='r')
+
+        num_train_batches = int(round(train_data.root.images.shape[0]/data.batchSize))
+        index = 0
+        for image, label in trainDataset:
+            index += 1
+            if index != num_train_batches - 1:
+                self.assertEqual(image.numpy().shape[0], data.batchSize)
+                self.assertEqual(label.numpy().shape[-1], data.numClasses)
+        self.assertEqual(num_train_batches, index)
+
+        num_test_batches = int(round(test_data.root.images.shape[0] / data.batchSize))
+        index = 0
+        for image, label in testDataset:
+            index += 1
+            if index != num_test_batches - 1:
+                self.assertEqual(image.numpy().shape[0], data.batchSize)
+                self.assertEqual(label.numpy().shape[-1], data.numClasses)
+        self.assertEqual(num_test_batches, index)

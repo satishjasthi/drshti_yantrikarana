@@ -20,6 +20,8 @@ x_test, y_test = x_test[:10,:,:,:], y_test[:10]
 dataSetName = 'cifar10'
 # dataSetName = 'Fruits'
 
+batchSize=1
+
 data_root_dir = Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/data/')
 
 data_aug_dir = data_root_dir.parent/'AugmentedData'
@@ -62,11 +64,16 @@ model_config = {'name':'DavidNet',
                 'train_tfrecords':Tfrecords_data_dir/f'{dataSetName}_train.tfrecords',
                 'test_tfrecords':Tfrecords_data_dir/f'{dataSetName}_test.tfrecords',
 
+                'tfDatasetShuffleBool':True,
+                'tfDatasetPrefetchBool':True,
+                'prefetchBufferSize': batchSize,
+
+
                 'loss': keras.losses.categorical_crossentropy,
                 'optimizer':keras.optimizers.SGD(lr=0,
                                                  momentum=0.9,
                                                  decay=5e-4*512),
-                'batchSize':512,
+                'batchSize':batchSize,
                 'epochs':24,
                 'transition_epoch':5,
                 'maxLr':0.8,

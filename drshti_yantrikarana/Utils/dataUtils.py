@@ -6,6 +6,7 @@ author: Satish Jasthi
 """
 import random
 from collections import Callable
+from multiprocessing import cpu_count
 from pathlib import Path
 
 import numpy as np
@@ -235,9 +236,18 @@ def _parse_image_function(example_proto, one_hot_encoding=True):
 
     # Parse the input tf.Example proto using the dictionary above.
     parsed_dataset = tf.io.parse_single_example(example_proto, image_feature_description)
+
+    # read in raw format
     image = tf.io.parse_tensor(parsed_dataset['image_raw'], out_type=tf.uint8)
+    # label = tf.io.parse_tensor(parsed_dataset['label'], out_type=tf.int64)
+
+    # change both image and label dtypes to float to use preprocess functions
+    # image = tf.cast(image, dtype=tf.float64)
+    # label = tf.cast(label, dtype=tf.float64)
+
     image_shape = [parsed_dataset['height'], parsed_dataset['width'], parsed_dataset['depth']]
     image = tf.reshape(image, image_shape)
+
     if one_hot_encoding:
         one_hot_encd_label = tf.one_hot(parsed_dataset['label'], depth=model_config['numClasses'])
         return image, one_hot_encd_label
@@ -254,3 +264,31 @@ def readTfRecord(tfrecords_file:Path):
     raw_dataset = tf.data.TFRecordDataset(tfrecords_file.as_posix())
     parsed_dataset = raw_dataset.map(_parse_image_function)
     return parsed_dataset
+
+def preprocessTfDataset(image, label):
+
+    # normalize
+    image = image/ 255.0
+
+    # standardize
+    mu_tensor, std_tensor = tf.convert_to_tensor([0.4914, 0.4822, 0.4465]), tf.convert_to_tensor([0.2470, 0.2435, 0.2616])
+    image = (image - tf.cast(mu_tensor, dtype=tf.float64))/ tf.cast(std_tensor,dtype=tf.float64)
+    return image, label
+
+def Tfrecords2TfDatasets(record:Path)->tf.data.Dataset:
+    """
+    Convert tfrecords to tf dataset objects
+    :param records: path object to tf records file
+    """
+    # read tf record
+    parsed_data = readTfRecord(tfrecords_file=record)
+
+    # shuffle records
+    if model_config['tfDatasetShuffleBool']:
+        dataset = parsed_data.shuffle(buffer_size=model_config['batchSize'])
+
+    # dataset = dataset.map(preprocessTfDataset)
+    dataset = dataset.batch(batch_size=model_config['batchSize'])
+    if model_config['tfDatasetPrefetchBool']:
+        dataset = dataset.prefetch(buffer_size=model_config['prefetchBufferSize'])
+    return dataset
