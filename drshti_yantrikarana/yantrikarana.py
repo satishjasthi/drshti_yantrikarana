@@ -11,7 +11,10 @@ import numpy as np
 
 # add current file to sys paths
 import tables
+import tensorflow as tf
+from tensorflow.python import keras
 
+from DavidNet import davidNet
 from Utils.dataUtils import Images2HDF5File, map_augmentation, numpy2hdf5, HDF52Tfrecords, Tfrecords2TfDatasets
 
 current_file_abs_path = Path(__file__).resolve()
@@ -160,7 +163,40 @@ class Data(Environment):
         testDataset = Tfrecords2TfDatasets(record=self.test_tfrecords)
         return trainDataset, testDataset
 
+class Network(Environment):
+
+    def __init__(self, *args, **kwargs):
+        super(Network, self).__init__(*args, **kwargs)
+
+    def buildNetwork(self)->keras.models.Model:
+        """
+        Method to create keras based model
+        """
+        # TODO add ways to crete function from config
+        return davidNet()
+
+    def train_model(self,
+                    train_dataset:tf.data.Dataset=None,
+                    test_dataset:tf.data.Dataset=None,
+                    )->tuple:
+        """
+        Method to trian model
+        """
+        model = self.buildNetwork()
+
+        # compile model
+        model.compile(loss=self.loss,
+                      optimizer=self.optimizer,
+                      metrics=self.metrics
+                      )
+
+        # train model
+        model_historty = model.fit(train_dataset, epochs=self.epochs, validation_data=test_dataset)
+        return model_historty, model
+
 if __name__ == "__main__":
     o = Data()
     # o.augment_data(data=Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/HDF5Data/cifar10_test.h5'))
-    o.createTfdatasets()
+    train_dataset, test_dataset = o.createTfdatasets()
+    n = Network()
+    n.train_model(train_dataset, test_dataset)

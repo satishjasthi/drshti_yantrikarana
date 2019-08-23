@@ -70,6 +70,7 @@ model_config = {'name':'DavidNet',
 
 
                 'loss': keras.losses.categorical_crossentropy,
+                'metrics':['accuracy'],
                 'optimizer':keras.optimizers.SGD(lr=0,
                                                  momentum=0.9,
                                                  decay=5e-4*512),
