@@ -14,8 +14,8 @@ from tensorflow.python import keras
 from Utils.dataAugmentations import random_rotate_90, random_flip
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
-# x_train, y_train = x_train[:20,:,:,:], y_train[:20]
-# x_test, y_test = x_test[:10,:,:,:], y_test[:10]
+x_train, y_train = x_train[:5000,:,:,:], y_train[:20]
+x_test, y_test = x_test[:1000,:,:,:], y_test[:10]
 
 dataSetName = 'cifar10'
 # dataSetName = 'Fruits'
@@ -78,8 +78,11 @@ model_config = {'name':'DavidNet',
                                                  decay=5e-4*512),
                 'batchSize':batchSize,
                 'epochs':24,
-                'transition_epoch':5,
+                'transitionEpoch':5,
                 'maxLr':0.8,
                 'minLr':0.08,
+                'an_start_lr':0.08,
+                'an_end_lr':0.001,
+                'an_start_epochs':24
 
                 }

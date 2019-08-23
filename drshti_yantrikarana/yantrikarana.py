@@ -16,6 +16,7 @@ from tensorflow.python import keras
 
 from DavidNet import davidNet
 from Utils.dataUtils import Images2HDF5File, map_augmentation, numpy2hdf5, HDF52Tfrecords, Tfrecords2TfDatasets
+from Utils.trainUtils import OneCycleLrScheduler
 
 current_file_abs_path = Path(__file__).resolve()
 sys.path.append(current_file_abs_path.parent.as_posix())
@@ -191,8 +192,13 @@ class Network(Environment):
                       metrics=self.metrics
                       )
 
+        call_backs_list = [keras.callbacks.LearningRateScheduler(OneCycleLrScheduler)]
+
         # train model
-        model_historty = model.fit(train_dataset, epochs=self.epochs, validation_data=test_dataset)
+        model_historty = model.fit(train_dataset,
+                                   epochs=self.epochs,
+                                   validation_data=test_dataset,
+                                   callbacks=call_backs_list)
         return model_historty, model
 
 if __name__ == "__main__":
