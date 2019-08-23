@@ -100,6 +100,7 @@ class Data(Environment):
         augmented_data_hdf5 = data
         if not augmented_data_hdf5.exists():
             # create hdf5 file to save augmented data
+            print('Augmenting data')
             augmented_data = tables.open_file(augmented_data_hdf5.as_posix(), mode='w')
 
             augmented_images_earry = augmented_data.create_earray(where=augmented_data.root,
@@ -196,7 +197,9 @@ class Network(Environment):
 
 if __name__ == "__main__":
     o = Data()
-    # o.augment_data(data=Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/HDF5Data/cifar10_test.h5'))
+    o.read_raw_data()
+    o.augment_data(o.train_data_aug_hdf5)
+    o.createTfrecords()
     train_dataset, test_dataset = o.createTfdatasets()
     n = Network()
     n.train_model(train_dataset, test_dataset)

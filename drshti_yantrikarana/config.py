@@ -14,15 +14,17 @@ from tensorflow.python import keras
 from Utils.dataAugmentations import random_rotate_90, random_flip
 
 (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
-x_train, y_train = x_train[:20,:,:,:], y_train[:20]
-x_test, y_test = x_test[:10,:,:,:], y_test[:10]
+# x_train, y_train = x_train[:20,:,:,:], y_train[:20]
+# x_test, y_test = x_test[:10,:,:,:], y_test[:10]
 
 dataSetName = 'cifar10'
 # dataSetName = 'Fruits'
 
-batchSize=1
+batchSize=128
 
-data_root_dir = Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/data/')
+# data_root_dir = Path('/Users/satishjasthi/Documents/Professional/ML/drshti_yantrikarana/data/')
+data_root_dir = Path(__file__).resolve().parent #colab
+
 
 data_aug_dir = data_root_dir.parent/'AugmentedData'
 data_aug_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +53,7 @@ model_config = {'name':'DavidNet',
                 'test_data_dir':data_root_dir/'test',
 
 
-                'augment_data_switch':False, # bool to turn on or off data augmentation
+                'augment_data_switch':True, # bool to turn on or off data augmentation
                 'train_data_aug':data_aug_dir,
                 'train_data_aug_hdf5': data_aug_dir/f'{dataSetName}_train_augmented.h5',
                 'data_augmentation_functions':[random_rotate_90, random_flip],
@@ -71,7 +73,7 @@ model_config = {'name':'DavidNet',
 
                 'loss': keras.losses.categorical_crossentropy,
                 'metrics':['accuracy'],
-                'optimizer':keras.optimizers.SGD(lr=0,
+                'optimizer':keras.optimizers.SGD(lr=0.08,
                                                  momentum=0.9,
                                                  decay=5e-4*512),
                 'batchSize':batchSize,
