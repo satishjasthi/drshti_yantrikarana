@@ -1,6 +1,0 @@
-"""
-Reference: 
-Usage:
-
-About:
-"""

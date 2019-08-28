@@ -1,3 +1,0 @@
-"""
-Author: Satish Jasthi
-"""
